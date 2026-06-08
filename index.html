@@ -136,13 +136,17 @@ function App() {
     try {
       res = await fetch(PROXY, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
     } catch(e) { throw new Error("Network error — cannot reach Worker: "+e.message); }
-    if (!res.ok) {
-      const t = await res.text().catch(()=>"");
-      if (res.status === 429 && retries > 0) {
-        await sleep(15000); // wait 15 seconds then retry
-        return callProxy(body, retries - 1);
+    if (res.status === 429) {
+        const t = await res.text().catch(()=>"");
+        let msg = "Too many requests — please try again in an hour.";
+        try { const j = JSON.parse(t); if (j.error?.message) msg = j.error.message; } catch {}
+        if (retries > 0 && msg.includes("rate limit of 30,000")) {
+          await sleep(15000);
+          return callProxy(body, retries - 1);
+        }
+        throw new Error(msg);
       }
-      throw new Error(`Worker error ${res.status}: ${t}`);
+      throw new Error(`Worker error ${res.status}: ${await res.text().catch(()=>"")}`);
     }
     const json = await res.json().catch(()=>{throw new Error("Invalid JSON from Worker");});
     if (json.error) throw new Error("Anthropic error: "+JSON.stringify(json.error));
