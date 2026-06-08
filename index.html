@@ -13,10 +13,11 @@
   body { font-family: 'Segoe UI', sans-serif; background: #FAF8F6; }
   textarea, input { font-family: 'Segoe UI', sans-serif; }
   @keyframes pulse { 0%{width:20%} 50%{width:80%} 100%{width:20%} }
-  .pulse { animation: pulse 1.5s infinite; }
+  .pulse { animation: pulse 1.8s ease-in-out infinite; }
   @media print {
     .no-print { display: none !important; }
     body { background: white; }
+    .page-break { page-break-before: always; }
   }
 </style>
 </head>
@@ -32,6 +33,9 @@ const C = {
 };
 
 const PROXY = "https://aily-api-proxy.katjaandersen74.workers.dev";
+
+const TODAY = new Date().toLocaleDateString("en-GB");
+const YEAR = new Date().getFullYear();
 
 const QUESTIONS = [
   { id: "industry", label: "What industry are you in?", placeholder: "e.g. Law firm, Manufacturing, Finance, Retail..." },
@@ -86,13 +90,13 @@ function Stepper({ step }) {
 function Field({value,onChange,multi,placeholder,style={}}) {
   const base = {width:"100%",border:`1px solid ${C.midGrey}`,borderRadius:4,padding:"8px 10px",fontSize:13,color:C.dark,background:C.white,fontFamily:"inherit",resize:multi?"vertical":"none",...style};
   return multi
-    ? <textarea value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{...base,minHeight:64}}/>
+    ? <textarea value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{...base,minHeight:80}}/>
     : <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{...base,height:36}}/>;
 }
 
 function Check({label,checked,onChange}) {
   return (
-    <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.dark,cursor:"pointer",marginRight:8}}>
+    <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.dark,cursor:"pointer",marginRight:8,marginBottom:4}}>
       <input type="checkbox" checked={checked} onChange={e=>onChange(e.target.checked)} style={{accentColor:C.dark,width:14,height:14}}/>
       {label}
     </label>
@@ -100,7 +104,7 @@ function Check({label,checked,onChange}) {
 }
 
 function SecHead({title,color}) {
-  return <div style={{background:color||C.greige,color:C.white,padding:"8px 16px",fontWeight:700,fontSize:12,letterSpacing:"0.08em",textTransform:"uppercase"}}>{title}</div>;
+  return <div style={{background:color||C.greige,color:C.white,padding:"10px 16px",fontWeight:700,fontSize:12,letterSpacing:"0.08em",textTransform:"uppercase"}}>{title}</div>;
 }
 
 function App() {
@@ -110,6 +114,7 @@ function App() {
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState("");
+  const [loadingDetail, setLoadingDetail] = useState("");
   const [plan, setPlan] = useState(null);
   const [bg, setBg] = useState("");
   const [activeTab, setActiveTab] = useState("plan");
@@ -158,8 +163,8 @@ function App() {
       if (isPptx) {
         const raw = await extractPptx(file);
         const data = await callProxy({
-          model:"claude-sonnet-4-5", max_tokens:1000,
-          messages:[{role:"user",content:`Summarise the key strategic priorities, goals, challenges from this presentation in max 400 words:\n\n${raw.slice(0,6000)}`}]
+          model:"claude-sonnet-4-5", max_tokens:1500,
+          messages:[{role:"user",content:`Extract and summarise the key strategic priorities, goals, challenges, market context and ambitions from this presentation. Be thorough — capture all important details that would help an AI strategy consultant understand the business deeply. Max 600 words.\n\nPRESENTATION CONTENT:\n${raw.slice(0,8000)}`}]
         });
         setStrategyText(data.content?.map(b=>b.text||"").join("\n")||"");
       } else {
@@ -168,10 +173,10 @@ function App() {
           const b64 = ev.target.result.split(",")[1];
           try {
             const data = await callProxy({
-              model:"claude-sonnet-4-5", max_tokens:1000,
+              model:"claude-sonnet-4-5", max_tokens:1500,
               messages:[{role:"user",content:[
                 {type:"document",source:{type:"base64",media_type:"application/pdf",data:b64}},
-                {type:"text",text:"Summarise the key strategic priorities, goals, challenges from this document in max 400 words."}
+                {type:"text",text:"Extract and summarise the key strategic priorities, goals, challenges, market context and ambitions from this document. Be thorough — capture all important details that would help an AI strategy consultant understand the business deeply. Max 600 words."}
               ]}]
             });
             setStrategyText(data.content?.map(b=>b.text||"").join("\n")||"");
@@ -187,32 +192,205 @@ function App() {
 
   const generate = async () => {
     setStep(2); setLoading(true); setError("");
-    const msgs = ["Researching your market...","Identifying AI use cases...","Designing your action plan...","Writing background paper..."];
-    let mi = 0; setLoadingMsg(msgs[0]);
-    const iv = setInterval(()=>{ mi=(mi+1)%msgs.length; setLoadingMsg(msgs[mi]); },3500);
-    const ctx = `STRATEGY: ${strategyText}\nINDUSTRY: ${answers.industry||"?"}\nSIZE: ${answers.size||"?"}\nAI MATURITY: ${answers.aiMaturity||"?"}\nURGENCY: ${answers.urgency||"?"}\nBUDGET: ${answers.budget||"?"}\nCHALLENGE: ${answers.biggestChallenge||"?"}`;
+
+    const ctx = `
+COMPANY STRATEGY SUMMARY:
+${strategyText}
+
+CONTEXT:
+- Industry: ${answers.industry||"Not specified"}
+- Organisation size: ${answers.size||"Not specified"}
+- Current AI maturity: ${answers.aiMaturity||"Not specified"}
+- Urgency: ${answers.urgency||"Not specified"}
+- Investment appetite: ${answers.budget||"Not specified"}
+- Biggest challenge: ${answers.biggestChallenge||"Not specified"}
+- Today's date: ${TODAY}
+- Current year: ${YEAR}
+    `.trim();
+
+    const planSystemPrompt = `You are a world-class AI strategy consultant with deep expertise across industries. Your task is to create a highly specific, actionable AI Execution Plan.
+
+CRITICAL INSTRUCTIONS:
+1. Think carefully before writing. Analyse the company context deeply before generating anything.
+2. All use cases must be SPECIFIC to this company — not generic. Reference their actual products, customers, workflows.
+3. Use REAL tool names (e.g. Microsoft Copilot, Claude, ChatGPT, Notion AI, GitHub Copilot, HubSpot AI, Salesforce Einstein, etc.)
+4. All dates in action plan must use ${YEAR} or ${YEAR+1} — NEVER use past years.
+5. All text fields must be COMPLETE sentences — never truncate or abbreviate.
+6. Return ONLY valid JSON. No markdown. No explanation. No backticks.
+
+USE CASE RULES — THIS IS CRITICAL:
+- A use case describes WHAT AI DOES for the user — it is a capability, not a project task.
+- CORRECT: "AI-assisted summarisation of customer emails before response" — describes what AI does
+- WRONG: "Implement email AI system" — that is a project task, not a use case
+- CORRECT: "Automatic generation of first draft proposals from tender documents using Claude"
+- WRONG: "Build proposal generation pipeline" — that is an action, not a use case
+- Daily = AI in everyday individual work (writing, summarising, researching, coding, communicating)
+- Operational = AI automating or augmenting business processes (reporting, compliance, quality control, customer service)
+- Strategic = AI creating competitive advantage or new capabilities (prediction, personalisation, market intelligence)
+- The action plan must contain DIFFERENT content from use cases — actions are the STEPS TO IMPLEMENT the use cases, not restatements of them.
+
+PEOPLE & CHANGE RULES:
+- "who" field: name specific roles/teams AND describe HOW their daily work changes — be concrete
+- "changeNarrative": describe the transformation story — what fear/resistance to expect and how to address it
+- "communicationPlan": how leadership communicates the AI journey to employees
+- "leadershipRole": what leaders specifically need to do differently to model AI adoption
+- "quickWin": one specific early win that will build confidence and momentum across the organisation
+
+JSON STRUCTURE (follow exactly):
+{
+  "ambition": "2-3 sentence bold ambition statement specific to this company",
+  "maturity": {
+    "retning": {"score": "1-5", "gap": "One specific sentence about the gap"},
+    "viden": {"score": "1-5", "gap": "One specific sentence about the gap"},
+    "data": {"score": "1-5", "gap": "One specific sentence about the gap"},
+    "teknologi": {"score": "1-5", "gap": "One specific sentence about the gap"},
+    "governance": {"score": "1-5", "gap": "One specific sentence about the gap"},
+    "resultater": {"score": "1-5", "gap": "One specific sentence about the gap"}
+  },
+  "useCases": {
+    "daily": [
+      {"name": "AI capability name — what AI does for the user", "tool": "Specific tool name and approach", "buy": true/false, "configure": true/false, "build": true/false, "dataSource": "Specific data source", "dataReady": true/false, "dataNeeds": true/false, "dataGap": true/false, "gdpr": true/false, "confidentiality": true/false, "errors": true/false, "security": true/false, "top5": true/false},
+      {"name": "...", "tool": "...", "buy": false, "configure": true, "build": false, "dataSource": "...", "dataReady": false, "dataNeeds": true, "dataGap": false, "gdpr": true, "confidentiality": false, "errors": false, "security": false, "top5": false},
+      {"name": "...", "tool": "...", "buy": true, "configure": false, "build": false, "dataSource": "...", "dataReady": true, "dataNeeds": false, "dataGap": false, "gdpr": false, "confidentiality": true, "errors": true, "security": false, "top5": true}
+    ],
+    "operational": [
+      {"name": "...", "tool": "...", "buy": false, "configure": true, "build": false, "dataSource": "...", "dataReady": false, "dataNeeds": true, "dataGap": false, "gdpr": true, "confidentiality": true, "errors": false, "security": false, "top5": true},
+      {"name": "...", "tool": "...", "buy": false, "configure": false, "build": true, "dataSource": "...", "dataReady": false, "dataNeeds": false, "dataGap": true, "gdpr": false, "confidentiality": true, "errors": true, "security": true, "top5": false},
+      {"name": "...", "tool": "...", "buy": true, "configure": false, "build": false, "dataSource": "...", "dataReady": true, "dataNeeds": false, "dataGap": false, "gdpr": true, "confidentiality": false, "errors": false, "security": false, "top5": true}
+    ],
+    "strategic": [
+      {"name": "...", "tool": "...", "buy": false, "configure": false, "build": true, "dataSource": "...", "dataReady": false, "dataNeeds": false, "dataGap": true, "gdpr": false, "confidentiality": true, "errors": true, "security": true, "top5": true},
+      {"name": "...", "tool": "...", "buy": false, "configure": true, "build": false, "dataSource": "...", "dataReady": false, "dataNeeds": true, "dataGap": false, "gdpr": true, "confidentiality": false, "errors": false, "security": false, "top5": false},
+      {"name": "...", "tool": "...", "buy": true, "configure": false, "build": false, "dataSource": "...", "dataReady": true, "dataNeeds": false, "dataGap": false, "gdpr": false, "confidentiality": true, "errors": false, "security": false, "top5": false}
+    ]
+  },
+  "people": {
+    "who": "Specific roles and how their daily work changes — be concrete about before/after",
+    "changeNarrative": "What resistance or fear to expect and the narrative to address it — be honest and human",
+    "communicationPlan": "How leadership communicates the AI journey: what message, what channel, what cadence",
+    "leadershipRole": "What leaders must do differently to model AI adoption — specific behaviours",
+    "quickWin": "One specific early win that will build confidence and momentum across the organisation",
+    "training": {"intro": true/false, "prompt": true/false, "toolSpecific": true/false, "leadership": true/false},
+    "adoption": {"guidelines": true/false, "champions": true/false, "workshops": true/false, "support": true/false}
+  },
+  "success": {
+    "after90": "Complete sentence describing measurable success after 90 days",
+    "metrics": {"time": true/false, "quality": true/false, "adoption": true/false, "revenue": true/false, "risk": true/false},
+    "baseline": "Complete sentence describing current baseline starting point"
+  },
+  "actions": {
+    "days30": [
+      {"action": "Implementation step that ENABLES a use case — not a restatement of the use case itself", "owner": "Role/person", "deadline": "DD.MM.${YEAR}"},
+      {"action": "...", "owner": "Role/person", "deadline": "DD.MM.${YEAR}"},
+      {"action": "...", "owner": "Role/person", "deadline": "DD.MM.${YEAR}"}
+    ],
+    "days90": [
+      {"action": "...", "owner": "Role/person", "deadline": "DD.MM.${YEAR}"},
+      {"action": "...", "owner": "Role/person", "deadline": "DD.MM.${YEAR}"},
+      {"action": "...", "owner": "Role/person", "deadline": "DD.MM.${YEAR}"}
+    ],
+    "days180": [
+      {"action": "...", "owner": "Role/person", "deadline": "DD.MM.${YEAR+1}"},
+      {"action": "...", "owner": "Role/person", "deadline": "DD.MM.${YEAR+1}"},
+      {"action": "...", "owner": "Role/person", "deadline": "DD.MM.${YEAR+1}"}
+    ]
+  }
+}`;
+
+    const bgSystemPrompt = `You are a senior AI market intelligence analyst. Write a rich, inspiring background intelligence paper that gives strategic context and inspiration for an AI Execution Plan. 
+
+CRITICAL INSTRUCTIONS:
+1. Think deeply before writing. This paper should make the reader feel informed, inspired and slightly urgent.
+2. Name REAL companies, REAL tools, REAL statistics where possible.
+3. Be specific to this company's industry and context — not generic.
+4. Write in the same language as the strategy input (Danish if Danish, English if English).
+5. Use markdown with ## headers. Bold key phrases with **bold**.`;
+
+    const loadingStages = [
+      ["🔍 Analysing your strategy...", "Reading context and identifying key priorities"],
+      ["🌍 Researching your market...", "Mapping competitive landscape and AI trends"],
+      ["💡 Identifying AI opportunities...", "Selecting highest-impact use cases for your context"],
+      ["🗺️ Building your action plan...", "Sequencing 30/90/180 day priorities"],
+      ["📚 Writing background intelligence...", "Compiling market research and inspiration"],
+    ];
+    let si = 0;
+    setLoadingMsg(loadingStages[0][0]);
+    setLoadingDetail(loadingStages[0][1]);
+    const iv = setInterval(()=>{
+      si = (si+1) % loadingStages.length;
+      setLoadingMsg(loadingStages[si][0]);
+      setLoadingDetail(loadingStages[si][1]);
+    }, 4000);
+
     try {
       const pd = await callProxy({
-        model:"claude-sonnet-4-5", max_tokens:4000,
-        system:`You are an expert AI strategy consultant. Return ONLY valid JSON, no markdown. Structure:
-{"ambition":"string","maturity":{"retning":{"score":"2","gap":"string"},"viden":{"score":"2","gap":"string"},"data":{"score":"2","gap":"string"},"teknologi":{"score":"2","gap":"string"},"governance":{"score":"2","gap":"string"},"resultater":{"score":"2","gap":"string"}},"useCases":{"daily":[{"name":"string","tool":"string","buy":true,"configure":false,"build":false,"dataSource":"string","dataReady":true,"dataNeeds":false,"dataGap":false,"gdpr":true,"confidentiality":false,"errors":false,"security":false,"top5":true},{"name":"string","tool":"string","buy":true,"configure":false,"build":false,"dataSource":"string","dataReady":true,"dataNeeds":false,"dataGap":false,"gdpr":false,"confidentiality":false,"errors":false,"security":false,"top5":false},{"name":"string","tool":"string","buy":false,"configure":true,"build":false,"dataSource":"string","dataReady":false,"dataNeeds":true,"dataGap":false,"gdpr":true,"confidentiality":false,"errors":true,"security":false,"top5":true}],"operational":[{"name":"string","tool":"string","buy":false,"configure":true,"build":false,"dataSource":"string","dataReady":false,"dataNeeds":true,"dataGap":false,"gdpr":true,"confidentiality":true,"errors":false,"security":false,"top5":true},{"name":"string","tool":"string","buy":false,"configure":true,"build":false,"dataSource":"string","dataReady":true,"dataNeeds":false,"dataGap":false,"gdpr":false,"confidentiality":true,"errors":true,"security":false,"top5":false},{"name":"string","tool":"string","buy":false,"configure":false,"build":true,"dataSource":"string","dataReady":false,"dataNeeds":false,"dataGap":true,"gdpr":true,"confidentiality":false,"errors":false,"security":true,"top5":true}],"strategic":[{"name":"string","tool":"string","buy":false,"configure":false,"build":true,"dataSource":"string","dataReady":false,"dataNeeds":false,"dataGap":true,"gdpr":false,"confidentiality":true,"errors":true,"security":true,"top5":false},{"name":"string","tool":"string","buy":false,"configure":true,"build":false,"dataSource":"string","dataReady":false,"dataNeeds":true,"dataGap":false,"gdpr":true,"confidentiality":false,"errors":false,"security":false,"top5":true},{"name":"string","tool":"string","buy":true,"configure":false,"build":false,"dataSource":"string","dataReady":true,"dataNeeds":false,"dataGap":false,"gdpr":false,"confidentiality":true,"errors":true,"security":false,"top5":false}]},"people":{"who":"string","training":{"intro":true,"prompt":true,"toolSpecific":false,"leadership":true},"adoption":{"guidelines":true,"champions":true,"workshops":false,"support":true}},"success":{"after90":"string","metrics":{"time":true,"quality":true,"adoption":true,"revenue":false,"risk":false},"baseline":"string"},"actions":{"days30":[{"action":"string","owner":"string","deadline":"string"},{"action":"string","owner":"string","deadline":"string"},{"action":"string","owner":"string","deadline":"string"}],"days90":[{"action":"string","owner":"string","deadline":"string"},{"action":"string","owner":"string","deadline":"string"},{"action":"string","owner":"string","deadline":"string"}],"days180":[{"action":"string","owner":"string","deadline":"string"},{"action":"string","owner":"string","deadline":"string"},{"action":"string","owner":"string","deadline":"string"}]}}
-Be specific. 3 use cases per category. Daily=productivity, Operational=process automation, Strategic=competitive advantage.`,
-        messages:[{role:"user",content:ctx}]
+        model:"claude-sonnet-4-5",
+        max_tokens:4000,
+        thinking: { type: "enabled", budget_tokens: 3000 },
+        system: planSystemPrompt,
+        messages:[{role:"user",content:`Generate a complete AI Execution Plan for this company. Think carefully about their specific context before writing.\n\n${ctx}`}]
       });
-      const txt = pd.content?.map(b=>b.text||"").join("")||"{}";
-      const parsed = JSON.parse(txt.replace(/```json|```/g,"").trim());
-      setPlan({...defaultPlan,...parsed});
+
+      const rawText = pd.content?.filter(b=>b.type==="text").map(b=>b.text||"").join("") || "{}";
+      const clean = rawText.replace(/```json|```/g,"").trim();
+      const parsed = JSON.parse(clean);
+      setPlan({...defaultPlan,...parsed,
+        useCases:{
+          daily: (parsed.useCases?.daily||[]).map(u=>({...defaultPlan.useCases.daily[0],...u})),
+          operational: (parsed.useCases?.operational||[]).map(u=>({...defaultPlan.useCases.operational[0],...u})),
+          strategic: (parsed.useCases?.strategic||[]).map(u=>({...defaultPlan.useCases.strategic[0],...u})),
+        },
+        people: {...defaultPlan.people,...parsed.people, training:{...defaultPlan.people.training,...parsed.people?.training}, adoption:{...defaultPlan.people.adoption,...parsed.people?.adoption}},
+        success: {...defaultPlan.success,...parsed.success, metrics:{...defaultPlan.success.metrics,...parsed.success?.metrics}},
+      });
 
       const bgd = await callProxy({
-        model:"claude-sonnet-4-5", max_tokens:3000,
-        system:"You are an expert AI strategy analyst. Write a rich background intelligence paper in markdown. Be concrete, name real tools and vendors, cite real trends. Match the language of the input.",
-        messages:[{role:"user",content:`Write a 600-800 word background intelligence paper for this company's AI plan.\nContext: ${ctx}\n\nCover:\n## Market & AI Trends\n## Biggest AI Opportunities\n## Technology Landscape\n## Risks & Governance\n## Why Act Now`}]
+        model:"claude-sonnet-4-5",
+        max_tokens:3000,
+        system: bgSystemPrompt,
+        messages:[{role:"user",content:`Write a 700-900 word background intelligence paper for this company's AI Execution Plan. Make it inspiring and specific.\n\nContext:\n${ctx}\n\nStructure:\n## Market & AI Trends\nWhat is happening in their specific industry with AI right now. Name real competitors and what they are doing. What are customers starting to expect?\n\n## The Biggest AI Opportunities\nThe 3-5 highest-impact AI opportunities for this specific company. Be concrete — explain the business case for each.\n\n## Technology Landscape\nWhich tools and platforms are winning in this space right now. Name real products with pros/cons.\n\n## Risks & Governance\nKey risks: GDPR, hallucinations, change resistance, vendor lock-in. What to watch out for.\n\n## Why Act Now\nA compelling, data-driven case for urgency. What will they lose competitively if they wait 12 months?`}]
       });
-      setBg(bgd.content?.map(b=>b.text||"").join("")||"");
+      setBg(bgd.content?.filter(b=>b.type==="text").map(b=>b.text||"").join("")||"");
       setStep(3);
     } catch(err) {
-      setError("Error: "+err.message);
-      setStep(1);
+      // Fallback: retry without thinking if thinking not supported
+      try {
+        const pd = await callProxy({
+          model:"claude-sonnet-4-5",
+          max_tokens:4000,
+          system: planSystemPrompt,
+          messages:[{role:"user",content:`Generate a complete AI Execution Plan for this company. Think carefully about their specific context before writing.\n\n${ctx}`}]
+        });
+        const rawText = pd.content?.filter(b=>b.type==="text").map(b=>b.text||"").join("") || "{}";
+        const clean = rawText.replace(/```json|```/g,"").trim();
+        const parsed = JSON.parse(clean);
+        setPlan({...defaultPlan,...parsed,
+          useCases:{
+            daily: (parsed.useCases?.daily||[]).map(u=>({...defaultPlan.useCases.daily[0],...u})),
+            operational: (parsed.useCases?.operational||[]).map(u=>({...defaultPlan.useCases.operational[0],...u})),
+            strategic: (parsed.useCases?.strategic||[]).map(u=>({...defaultPlan.useCases.strategic[0],...u})),
+          },
+          people: {...defaultPlan.people,...parsed.people,
+            training:{...defaultPlan.people.training,...parsed.people?.training},
+            adoption:{...defaultPlan.people.adoption,...parsed.people?.adoption},
+            changeNarrative: parsed.people?.changeNarrative||"",
+            communicationPlan: parsed.people?.communicationPlan||"",
+            leadershipRole: parsed.people?.leadershipRole||"",
+            quickWin: parsed.people?.quickWin||"",
+          },
+          success: {...defaultPlan.success,...parsed.success, metrics:{...defaultPlan.success.metrics,...parsed.success?.metrics}},
+        });
+        const bgd = await callProxy({
+          model:"claude-sonnet-4-5", max_tokens:3000,
+          system: bgSystemPrompt,
+          messages:[{role:"user",content:`Write a 700-900 word background intelligence paper.\n\nContext:\n${ctx}\n\n## Market & AI Trends\n## The Biggest AI Opportunities\n## Technology Landscape\n## Risks & Governance\n## Why Act Now`}]
+        });
+        setBg(bgd.content?.filter(b=>b.type==="text").map(b=>b.text||"").join("")||"");
+        setStep(3);
+      } catch(err2) {
+        setError("Error: "+err2.message);
+        setStep(1);
+      }
     }
     clearInterval(iv); setLoading(false);
   };
@@ -220,12 +398,12 @@ Be specific. 3 use cases per category. Daily=productivity, Operational=process a
   const updUC = (cat,idx,f,v) => setPlan(p=>({...p,useCases:{...p.useCases,[cat]:p.useCases[cat].map((u,i)=>i===idx?{...u,[f]:v}:u)}}));
   const updAct = (ph,idx,f,v) => setPlan(p=>({...p,actions:{...p.actions,[ph]:p.actions[ph].map((a,i)=>i===idx?{...a,[f]:v}:a)}}));
 
-  const mdToHtml = (t) => t
-    .replace(/## (.*)/g,`<h3 style="color:${C.dark};margin:20px 0 8px;font-size:15px;border-bottom:2px solid ${C.blush};padding-bottom:4px">$1</h3>`)
+  const mdToHtml = (t) => (t||"")
+    .replace(/## (.*)/g,`<h3 style="color:${C.dark};margin:24px 0 10px;font-size:16px;border-bottom:2px solid ${C.blush};padding-bottom:6px;font-weight:700">$1</h3>`)
     .replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
     .replace(/\n/g,"<br/>");
 
-  // STEP 0
+  // STEP 0 — Upload
   if (step===0) return (
     <div style={{background:C.offwhite,minHeight:"100vh",padding:32}}>
       <div style={{maxWidth:640,margin:"0 auto"}}>
@@ -237,17 +415,17 @@ Be specific. 3 use cases per category. Daily=productivity, Operational=process a
         <Stepper step={0}/>
         <div style={{background:C.white,borderRadius:8,padding:32,boxShadow:"0 2px 12px rgba(44,36,32,0.07)"}}>
           <h2 style={{fontSize:16,fontWeight:700,color:C.dark,marginTop:0,marginBottom:16}}>Step 1 — Upload your strategy</h2>
-          <div onClick={()=>fileRef.current.click()} style={{border:`2px dashed ${C.greige}`,borderRadius:8,padding:"28px 24px",textAlign:"center",cursor:"pointer",background:C.offwhite,marginBottom:16}}>
-            <div style={{fontSize:28,marginBottom:8}}>📄</div>
+          <div onClick={()=>fileRef.current.click()} style={{border:`2px dashed ${C.greige}`,borderRadius:8,padding:"28px 24px",textAlign:"center",cursor:"pointer",background:C.offwhite,marginBottom:16,transition:"border-color 0.2s"}}>
+            <div style={{fontSize:32,marginBottom:8}}>📄</div>
             <div style={{fontWeight:600,color:C.dark,fontSize:14}}>Click to upload PDF or PowerPoint</div>
-            <div style={{fontSize:12,color:C.greigeDark,marginTop:4}}>Accepts .pdf and .pptx</div>
+            <div style={{fontSize:12,color:C.greigeDark,marginTop:4}}>Accepts .pdf and .pptx — strategy, annual report, business plan</div>
             {fileName && <div style={{marginTop:10,color:C.blushDark,fontWeight:600,fontSize:13}}>✓ {fileName}</div>}
           </div>
           <input ref={fileRef} type="file" accept=".pdf,.pptx" onChange={handleFile} style={{display:"none"}}/>
-          {loading && <div style={{color:C.greigeDark,fontSize:13,marginBottom:12,textAlign:"center"}}>⏳ {loadingMsg}</div>}
+          {loading && <div style={{color:C.greigeDark,fontSize:13,marginBottom:12,textAlign:"center",padding:"8px 0"}}>⏳ Reading document...</div>}
           <div style={{marginBottom:16}}>
             <label style={{fontSize:13,fontWeight:600,color:C.dark,display:"block",marginBottom:6}}>Or describe your strategy here:</label>
-            <textarea value={strategyText} onChange={e=>setStrategyText(e.target.value)} placeholder="Paste or type your key strategic priorities, goals, challenges..." style={{width:"100%",minHeight:100,border:`1px solid ${C.midGrey}`,borderRadius:6,padding:"10px 12px",fontSize:13,color:C.dark,fontFamily:"inherit",resize:"vertical"}}/>
+            <textarea value={strategyText} onChange={e=>setStrategyText(e.target.value)} placeholder="Paste or type your key strategic priorities, goals, challenges, market position..." style={{width:"100%",minHeight:120,border:`1px solid ${C.midGrey}`,borderRadius:6,padding:"10px 12px",fontSize:13,color:C.dark,fontFamily:"inherit",resize:"vertical"}}/>
           </div>
           <div style={{display:"flex",gap:12,marginBottom:16}}>
             <div style={{flex:1}}>
@@ -263,7 +441,7 @@ Be specific. 3 use cases per category. Daily=productivity, Operational=process a
             <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
               <input type="checkbox" id="consent" checked={consented} onChange={e=>setConsented(e.target.checked)} style={{accentColor:C.dark,width:16,height:16,marginTop:2,flexShrink:0}}/>
               <label htmlFor="consent" style={{fontSize:12,color:C.dark,lineHeight:1.6,cursor:"pointer"}}>
-                <strong>Privacy notice:</strong> Your document is sent to Anthropic's API for processing. It is <strong>not stored by AILY</strong>. Anthropic does not use API data for training. Do not upload strictly confidential documents without consulting your data policy.
+                <strong>Privacy notice:</strong> Your document is sent to Anthropic's API for processing. It is <strong>not stored by AILY</strong>. Anthropic does not use API data for model training. Do not upload strictly confidential documents without consulting your organisation's data policy.
               </label>
             </div>
             <div style={{marginTop:8,paddingLeft:26,fontSize:11,color:C.greigeDark}}>🔒 No data stored by AILY · Session only · Processed via Anthropic API</div>
@@ -278,7 +456,7 @@ Be specific. 3 use cases per category. Daily=productivity, Operational=process a
     </div>
   );
 
-  // STEP 1
+  // STEP 1 — Questions
   if (step===1) return (
     <div style={{background:C.offwhite,minHeight:"100vh",padding:32}}>
       <div style={{maxWidth:640,margin:"0 auto"}}>
@@ -289,7 +467,7 @@ Be specific. 3 use cases per category. Daily=productivity, Operational=process a
         <Stepper step={1}/>
         <div style={{background:C.white,borderRadius:8,padding:32,boxShadow:"0 2px 12px rgba(44,36,32,0.07)"}}>
           <h2 style={{fontSize:16,fontWeight:700,color:C.dark,marginTop:0,marginBottom:6}}>Step 2 — A few quick questions</h2>
-          <p style={{fontSize:13,color:C.greigeDark,marginBottom:20}}>Help us tailor the plan to your specific context.</p>
+          <p style={{fontSize:13,color:C.greigeDark,marginBottom:20}}>Your answers help tailor the plan and sharpen the market research.</p>
           {error && <div style={{marginBottom:16,background:"#fde8e8",border:"1px solid #f4b4b2",borderRadius:6,padding:"10px 14px",fontSize:12,color:"#8b0000"}}>⚠️ {error}</div>}
           {QUESTIONS.map(q=>(
             <div key={q.id} style={{marginBottom:16}}>
@@ -307,30 +485,35 @@ Be specific. 3 use cases per category. Daily=productivity, Operational=process a
     </div>
   );
 
-  // STEP 2
+  // STEP 2 — Loading
   if (step===2) return (
     <div style={{background:C.offwhite,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:32}}>
-      <div style={{textAlign:"center",maxWidth:440}}>
-        <div style={{fontSize:48,marginBottom:16}}>⚡</div>
-        <h2 style={{fontSize:20,fontWeight:800,color:C.dark,marginBottom:8}}>Building your AI Execution Plan</h2>
-        <p style={{fontSize:14,color:C.greigeDark,marginBottom:24}}>{loadingMsg}</p>
-        <div style={{background:C.midGrey,borderRadius:100,height:6,overflow:"hidden"}}>
+      <div style={{textAlign:"center",maxWidth:480}}>
+        <div style={{fontSize:52,marginBottom:20}}>⚡</div>
+        <h2 style={{fontSize:22,fontWeight:800,color:C.dark,marginBottom:8}}>Building your AI Execution Plan</h2>
+        <p style={{fontSize:16,color:C.dark,marginBottom:6,fontWeight:600}}>{loadingMsg}</p>
+        <p style={{fontSize:13,color:C.greigeDark,marginBottom:28}}>{loadingDetail}</p>
+        <div style={{background:C.midGrey,borderRadius:100,height:6,overflow:"hidden",marginBottom:16}}>
           <div className="pulse" style={{background:C.blush,height:"100%",borderRadius:100}}/>
         </div>
+        <p style={{fontSize:11,color:C.greigeDark}}>This takes 30–60 seconds — we're researching your market and crafting a tailored plan</p>
       </div>
     </div>
   );
 
-  // STEP 3
+  // STEP 3 — Plan
   if (step===3&&plan) {
-    const matLabels = [["retning","Retning & Strategi"],["viden","Viden & Træning"],["data","Data"],["teknologi","Teknologi & Systemer"],["governance","Governance & Ansvar"],["resultater","Resultater & Fremdrift"]];
+    const matLabels = [
+      ["retning","Retning & Strategi"],["viden","Viden & Træning"],["data","Data"],
+      ["teknologi","Teknologi & Systemer"],["governance","Governance & Ansvar"],["resultater","Resultater & Fremdrift"]
+    ];
 
     const UCRow = ({uc,cat,idx}) => (
-      <div style={{borderBottom:`1px solid ${C.lightGrey}`,padding:"10px 0",display:"grid",gridTemplateColumns:"2fr 1.5fr 1.5fr 1.5fr auto",gap:8,alignItems:"start"}}>
-        <Field value={uc.name} onChange={v=>updUC(cat,idx,"name",v)} placeholder="Use case..."/>
+      <div style={{borderBottom:`1px solid ${C.lightGrey}`,padding:"12px 0",display:"grid",gridTemplateColumns:"2fr 1.6fr 1.4fr 1.4fr 36px",gap:10,alignItems:"start"}}>
+        <Field value={uc.name} onChange={v=>updUC(cat,idx,"name",v)} placeholder="Use case..." multi style={{minHeight:60,fontSize:12}}/>
         <div>
-          <Field value={uc.tool} onChange={v=>updUC(cat,idx,"tool",v)} placeholder="Tool"/>
-          <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>
+          <Field value={uc.tool} onChange={v=>updUC(cat,idx,"tool",v)} placeholder="Tool / approach" multi style={{minHeight:60,fontSize:12}}/>
+          <div style={{display:"flex",gap:8,marginTop:6,flexWrap:"wrap"}}>
             {["buy","configure","build"].map(o=>(
               <label key={o} style={{fontSize:11,display:"flex",alignItems:"center",gap:3,cursor:"pointer"}}>
                 <input type="checkbox" checked={uc[o]} onChange={e=>updUC(cat,idx,o,e.target.checked)} style={{accentColor:C.dark}}/>{o.charAt(0).toUpperCase()+o.slice(1)}
@@ -339,8 +522,8 @@ Be specific. 3 use cases per category. Daily=productivity, Operational=process a
           </div>
         </div>
         <div>
-          <Field value={uc.dataSource} onChange={v=>updUC(cat,idx,"dataSource",v)} placeholder="Data source"/>
-          <div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>
+          <Field value={uc.dataSource} onChange={v=>updUC(cat,idx,"dataSource",v)} placeholder="Data source" multi style={{minHeight:60,fontSize:12}}/>
+          <div style={{display:"flex",gap:4,marginTop:6,flexWrap:"wrap"}}>
             {[["dataReady","Ready"],["dataNeeds","Needs work"],["dataGap","Gap"]].map(([k,l])=>(
               <label key={k} style={{fontSize:11,display:"flex",alignItems:"center",gap:3,cursor:"pointer"}}>
                 <input type="checkbox" checked={uc[k]} onChange={e=>updUC(cat,idx,k,e.target.checked)} style={{accentColor:C.dark}}/>{l}
@@ -355,7 +538,7 @@ Be specific. 3 use cases per category. Daily=productivity, Operational=process a
             </label>
           ))}
         </div>
-        <label style={{cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <label style={{cursor:"pointer",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",paddingTop:16}}>
           <input type="checkbox" checked={uc.top5} onChange={e=>updUC(cat,idx,"top5",e.target.checked)} style={{display:"none"}}/>
           <span style={{color:uc.top5?"#e5a800":C.midGrey}}>★</span>
         </label>
@@ -365,11 +548,11 @@ Be specific. 3 use cases per category. Daily=productivity, Operational=process a
     return (
       <div style={{background:C.offwhite,minHeight:"100vh"}}>
         {/* Header */}
-        <div className="no-print" style={{background:C.dark,color:C.white,padding:"16px 32px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div className="no-print" style={{background:C.dark,color:C.white,padding:"16px 32px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
           <div>
             <div style={{fontSize:11,color:C.greige,letterSpacing:"0.1em",textTransform:"uppercase"}}>aily.dk</div>
             <h1 style={{fontSize:20,fontWeight:800,margin:"2px 0 0",color:C.white}}>AI Execution Plan</h1>
-            {company&&<div style={{fontSize:12,color:C.greige,marginTop:2}}>{company}{owner?` · ${owner}`:""} · {new Date().toLocaleDateString("en-GB")}</div>}
+            {company&&<div style={{fontSize:12,color:C.greige,marginTop:2}}>{company}{owner?` · ${owner}`:""} · {TODAY}</div>}
           </div>
           <div style={{display:"flex",gap:10}}>
             <button onClick={()=>setStep(0)} style={{background:"transparent",color:C.greige,border:`1px solid ${C.greige}`,borderRadius:5,padding:"7px 14px",fontSize:12,cursor:"pointer"}}>← Start over</button>
@@ -378,54 +561,55 @@ Be specific. 3 use cases per category. Daily=productivity, Operational=process a
         </div>
 
         {/* Tabs */}
-        <div className="no-print" style={{background:C.white,borderBottom:`1px solid ${C.midGrey}`,padding:"0 32px",display:"flex"}}>
+        <div className="no-print" style={{background:C.white,borderBottom:`1px solid ${C.midGrey}`,padding:"0 32px",display:"flex",position:"sticky",top:57,zIndex:99}}>
           {[["plan","📋 AI Execution Plan"],["background","📚 Background Paper"]].map(([id,label])=>(
             <button key={id} onClick={()=>setActiveTab(id)} style={{background:"transparent",border:"none",borderBottom:activeTab===id?`3px solid ${C.dark}`:"3px solid transparent",padding:"14px 20px",fontSize:13,fontWeight:activeTab===id?700:400,color:activeTab===id?C.dark:C.greigeDark,cursor:"pointer"}}>{label}</button>
           ))}
         </div>
 
-        <div style={{maxWidth:1100,margin:"0 auto",padding:"24px 24px 60px"}}>
+        <div style={{maxWidth:1150,margin:"0 auto",padding:"28px 24px 80px"}}>
           {activeTab==="plan"&&<>
+
             {/* Ambition */}
-            <div style={{background:C.white,borderRadius:8,marginBottom:20,overflow:"hidden",boxShadow:"0 1px 6px rgba(44,36,32,0.06)"}}>
+            <div style={{background:C.white,borderRadius:8,marginBottom:24,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}}>
               <SecHead title="AI Ambition" color={C.blush}/>
-              <div style={{padding:16}}>
-                <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.08em",display:"block",marginBottom:8}}>Our AI Ambition</label>
+              <div style={{padding:20}}>
+                <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.08em",display:"block",marginBottom:10}}>Our AI Ambition</label>
                 <textarea value={plan.ambition} onChange={e=>setPlan(p=>({...p,ambition:e.target.value}))}
-                  style={{width:"100%",border:`1px solid ${C.midGrey}`,borderRadius:4,padding:"10px 12px",fontSize:14,color:C.dark,fontFamily:"inherit",resize:"vertical",minHeight:60,fontStyle:"italic"}}/>
+                  style={{width:"100%",border:`1px solid ${C.midGrey}`,borderRadius:4,padding:"12px 14px",fontSize:15,color:C.dark,fontFamily:"inherit",resize:"vertical",minHeight:80,fontStyle:"italic",lineHeight:1.6}}/>
               </div>
             </div>
 
             {/* Maturity */}
-            <div style={{background:C.white,borderRadius:8,marginBottom:20,overflow:"hidden",boxShadow:"0 1px 6px rgba(44,36,32,0.06)"}}>
+            <div style={{background:C.white,borderRadius:8,marginBottom:24,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}}>
               <SecHead title="AI Maturity Assessment" color={C.greige}/>
-              <div style={{padding:16,display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+              <div style={{padding:16,display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
                 {matLabels.map(([k,label])=>(
-                  <div key={k} style={{background:C.lightGrey,borderRadius:6,padding:12}}>
-                    <div style={{fontSize:11,fontWeight:700,color:C.dark,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>{label}</div>
+                  <div key={k} style={{background:C.lightGrey,borderRadius:6,padding:14}}>
+                    <div style={{fontSize:11,fontWeight:700,color:C.dark,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:10}}>{label}</div>
                     <label style={{fontSize:11,color:C.greigeDark,display:"block",marginBottom:4}}>Score (1-5):</label>
                     <input value={plan.maturity[k]?.score||""} onChange={e=>setPlan(p=>({...p,maturity:{...p.maturity,[k]:{...p.maturity[k],score:e.target.value}}}))}
-                      style={{width:"100%",border:`1px solid ${C.midGrey}`,borderRadius:4,padding:"6px 8px",fontSize:13,marginBottom:8}}/>
+                      style={{width:"100%",border:`1px solid ${C.midGrey}`,borderRadius:4,padding:"6px 8px",fontSize:14,fontWeight:700,marginBottom:10}}/>
                     <label style={{fontSize:11,color:C.greigeDark,display:"block",marginBottom:4}}>Biggest gap:</label>
                     <textarea value={plan.maturity[k]?.gap||""} onChange={e=>setPlan(p=>({...p,maturity:{...p.maturity,[k]:{...p.maturity[k],gap:e.target.value}}}))}
-                      style={{width:"100%",border:`1px solid ${C.midGrey}`,borderRadius:4,padding:"6px 8px",fontSize:12,fontFamily:"inherit",resize:"vertical",minHeight:48}}/>
+                      style={{width:"100%",border:`1px solid ${C.midGrey}`,borderRadius:4,padding:"6px 8px",fontSize:12,fontFamily:"inherit",resize:"vertical",minHeight:64,lineHeight:1.5}}/>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Use Cases */}
-            <div style={{background:C.white,borderRadius:8,marginBottom:20,overflow:"hidden",boxShadow:"0 1px 6px rgba(44,36,32,0.06)"}}>
+            <div style={{background:C.white,borderRadius:8,marginBottom:24,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}}>
               <SecHead title="Use Cases · Technology · Data · Governance" color={C.greige}/>
               <div style={{padding:"0 16px 16px"}}>
-                <div style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1.5fr 1.5fr auto",gap:8,padding:"10px 0 6px",borderBottom:`2px solid ${C.midGrey}`}}>
+                <div style={{display:"grid",gridTemplateColumns:"2fr 1.6fr 1.4fr 1.4fr 36px",gap:10,padding:"10px 0 8px",borderBottom:`2px solid ${C.midGrey}`}}>
                   {["Use Case","Technology","Data","Governance","★"].map(h=>(
                     <div key={h} style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em"}}>{h}</div>
                   ))}
                 </div>
                 {[["daily","Daily Productivity",C.lightGrey],["operational","Operational",C.offwhite],["strategic","Strategic",C.lightGrey]].map(([cat,label,bg])=>(
-                  <div key={cat} style={{background:bg}}>
-                    <div style={{padding:"6px 0 2px",fontSize:11,fontWeight:800,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.1em"}}>{label}</div>
+                  <div key={cat} style={{background:bg,padding:"4px 0"}}>
+                    <div style={{padding:"8px 0 2px",fontSize:11,fontWeight:800,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.1em",borderTop:`1px solid ${C.midGrey}`,marginTop:4}}>{label}</div>
                     {(plan.useCases[cat]||[]).map((uc,idx)=><UCRow key={idx} uc={uc} cat={cat} idx={idx}/>)}
                   </div>
                 ))}
@@ -433,25 +617,41 @@ Be specific. 3 use cases per category. Daily=productivity, Operational=process a
             </div>
 
             {/* People & Success */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:20}}>
-              <div style={{background:C.white,borderRadius:8,overflow:"hidden",boxShadow:"0 1px 6px rgba(44,36,32,0.06)"}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24,marginBottom:24}}>
+              <div style={{background:C.white,borderRadius:8,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}}>
                 <SecHead title="People, Training & Change Management" color={C.greige}/>
-                <div style={{padding:16,display:"flex",flexDirection:"column",gap:12}}>
+                <div style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
                   <div>
-                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:6}}>Who needs to change how they work?</label>
-                    <Field multi value={plan.people?.who||""} onChange={v=>setPlan(p=>({...p,people:{...p.people,who:v}}))} placeholder="Teams and roles..."/>
+                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Who needs to change — and how?</label>
+                    <Field multi value={plan.people?.who||""} onChange={v=>setPlan(p=>({...p,people:{...p.people,who:v}}))} placeholder="Which roles and how their daily work changes..." style={{minHeight:72}}/>
                   </div>
                   <div>
-                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:6}}>Training</label>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Change narrative & resistance</label>
+                    <Field multi value={plan.people?.changeNarrative||""} onChange={v=>setPlan(p=>({...p,people:{...p.people,changeNarrative:v}}))} placeholder="What fear or resistance to expect and how to address it..." style={{minHeight:72}}/>
+                  </div>
+                  <div>
+                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Communication plan</label>
+                    <Field multi value={plan.people?.communicationPlan||""} onChange={v=>setPlan(p=>({...p,people:{...p.people,communicationPlan:v}}))} placeholder="How leadership communicates the AI journey..." style={{minHeight:72}}/>
+                  </div>
+                  <div>
+                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Leadership role</label>
+                    <Field multi value={plan.people?.leadershipRole||""} onChange={v=>setPlan(p=>({...p,people:{...p.people,leadershipRole:v}}))} placeholder="What leaders must do differently..." style={{minHeight:64}}/>
+                  </div>
+                  <div>
+                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>The quick win that builds momentum</label>
+                    <Field multi value={plan.people?.quickWin||""} onChange={v=>setPlan(p=>({...p,people:{...p.people,quickWin:v}}))} placeholder="One early win that creates confidence..." style={{minHeight:56}}/>
+                  </div>
+                  <div>
+                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Training</label>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
                       {[["intro","Intro"],["prompt","Prompt Skills"],["toolSpecific","Tool-specific"],["leadership","Leadership"]].map(([k,l])=>(
                         <Check key={k} label={l} checked={plan.people?.training?.[k]||false} onChange={v=>setPlan(p=>({...p,people:{...p.people,training:{...p.people.training,[k]:v}}}))}/>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:6}}>Adoption</label>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Adoption</label>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
                       {[["guidelines","Guidelines"],["champions","Champions"],["workshops","Workshops"],["support","Support Channel"]].map(([k,l])=>(
                         <Check key={k} label={l} checked={plan.people?.adoption?.[k]||false} onChange={v=>setPlan(p=>({...p,people:{...p.people,adoption:{...p.people.adoption,[k]:v}}}))}/>
                       ))}
@@ -459,44 +659,45 @@ Be specific. 3 use cases per category. Daily=productivity, Operational=process a
                   </div>
                 </div>
               </div>
-              <div style={{background:C.white,borderRadius:8,overflow:"hidden",boxShadow:"0 1px 6px rgba(44,36,32,0.06)"}}>
+
+              <div style={{background:C.white,borderRadius:8,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}}>
                 <SecHead title="How We Measure Success" color={C.greige}/>
-                <div style={{padding:16,display:"flex",flexDirection:"column",gap:12}}>
+                <div style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
                   <div>
-                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:6}}>After 90 days we've succeeded if:</label>
-                    <Field multi value={plan.success?.after90||""} onChange={v=>setPlan(p=>({...p,success:{...p.success,after90:v}}))}/>
+                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>After 90 days we've succeeded if:</label>
+                    <Field multi value={plan.success?.after90||""} onChange={v=>setPlan(p=>({...p,success:{...p.success,after90:v}}))} style={{minHeight:80}}/>
                   </div>
                   <div>
-                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:6}}>Key Metrics</label>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Key Metrics</label>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
                       {[["time","Time saved"],["quality","Quality"],["adoption","Adoption"],["revenue","Revenue"],["risk","Risk"]].map(([k,l])=>(
                         <Check key={k} label={l} checked={plan.success?.metrics?.[k]||false} onChange={v=>setPlan(p=>({...p,success:{...p.success,metrics:{...p.success.metrics,[k]:v}}}))}/>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:6}}>Baseline / Starting point</label>
-                    <Field value={plan.success?.baseline||""} onChange={v=>setPlan(p=>({...p,success:{...p.success,baseline:v}}))}/>
+                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Baseline / Starting point</label>
+                    <Field multi value={plan.success?.baseline||""} onChange={v=>setPlan(p=>({...p,success:{...p.success,baseline:v}}))} style={{minHeight:64}}/>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Action Plan */}
-            <div style={{background:C.white,borderRadius:8,overflow:"hidden",boxShadow:"0 1px 6px rgba(44,36,32,0.06)",marginBottom:20}}>
+            <div style={{background:C.white,borderRadius:8,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)",marginBottom:24}}>
               <SecHead title="Action Plan · 30 / 90 / 180 Days" color={C.dark}/>
               <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)"}}>
-                {[["days30","30 Days — Quick wins",C.blush],["days90","90 Days — First use cases live",C.greige],["days180","180 Days — Scale & learn",C.dark]].map(([ph,label,col])=>(
+                {[["days30","30 Days — Quick wins & foundation",C.blush],["days90","90 Days — First use cases live",C.greige],["days180","180 Days — Scale & learn",C.dark]].map(([ph,label,col])=>(
                   <div key={ph} style={{borderRight:`1px solid ${C.midGrey}`}}>
-                    <div style={{background:col,color:col===C.dark?C.white:C.dark,padding:"8px 14px",fontSize:12,fontWeight:700}}>{label}</div>
-                    <div style={{padding:"12px 14px"}}>
+                    <div style={{background:col,color:col===C.dark?C.white:C.dark,padding:"10px 16px",fontSize:12,fontWeight:700}}>{label}</div>
+                    <div style={{padding:"14px 16px"}}>
                       {(plan.actions[ph]||[]).map((a,idx)=>(
-                        <div key={idx} style={{marginBottom:12}}>
-                          <div style={{fontSize:11,fontWeight:700,color:C.greigeDark,marginBottom:3}}>{idx+1}.</div>
-                          <Field multi value={a.action} onChange={v=>updAct(ph,idx,"action",v)} placeholder="Action..." style={{minHeight:52}}/>
-                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:5}}>
-                            <Field value={a.owner} onChange={v=>updAct(ph,idx,"owner",v)} placeholder="Owner"/>
-                            <Field value={a.deadline} onChange={v=>updAct(ph,idx,"deadline",v)} placeholder="Deadline"/>
+                        <div key={idx} style={{marginBottom:16,paddingBottom:16,borderBottom:idx<2?`1px solid ${C.lightGrey}`:"none"}}>
+                          <div style={{fontSize:11,fontWeight:700,color:C.greigeDark,marginBottom:6}}>{idx+1}.</div>
+                          <Field multi value={a.action} onChange={v=>updAct(ph,idx,"action",v)} placeholder="Describe the action..." style={{minHeight:72,fontSize:12}}/>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:6}}>
+                            <Field value={a.owner} onChange={v=>updAct(ph,idx,"owner",v)} placeholder="Owner" style={{fontSize:12}}/>
+                            <Field value={a.deadline} onChange={v=>updAct(ph,idx,"deadline",v)} placeholder={`DD.MM.${YEAR}`} style={{fontSize:12}}/>
                           </div>
                         </div>
                       ))}
@@ -506,29 +707,31 @@ Be specific. 3 use cases per category. Daily=productivity, Operational=process a
               </div>
             </div>
 
-            <div style={{textAlign:"center",padding:"12px 0",borderTop:`1px solid ${C.midGrey}`,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-              <div style={{width:20,height:20,background:C.dark,borderRadius:3,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                <span style={{color:C.white,fontSize:9,fontWeight:800}}>A</span>
+            {/* Footer */}
+            <div style={{textAlign:"center",padding:"16px 0",borderTop:`1px solid ${C.midGrey}`,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              <div style={{width:22,height:22,background:C.dark,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <span style={{color:C.white,fontSize:10,fontWeight:800}}>A</span>
               </div>
-              <span style={{fontSize:11,color:C.greigeDark,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>AILY · aily.dk</span>
+              <span style={{fontSize:12,color:C.greigeDark,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>AILY · aily.dk</span>
             </div>
           </>}
 
           {activeTab==="background"&&(
-            <div style={{background:C.white,borderRadius:8,padding:32,boxShadow:"0 1px 6px rgba(44,36,32,0.06)"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,borderBottom:`2px solid ${C.blush}`,paddingBottom:16}}>
+            <div style={{background:C.white,borderRadius:8,padding:36,boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24,borderBottom:`2px solid ${C.blush}`,paddingBottom:20}}>
                 <div>
-                  <h2 style={{fontSize:18,fontWeight:800,color:C.dark,margin:0}}>Background Intelligence Paper</h2>
-                  <p style={{fontSize:12,color:C.greigeDark,margin:"4px 0 0"}}>Supporting research and market context for your AI Execution Plan</p>
+                  <h2 style={{fontSize:20,fontWeight:800,color:C.dark,margin:0}}>Background Intelligence Paper</h2>
+                  <p style={{fontSize:13,color:C.greigeDark,margin:"6px 0 0"}}>Market research and strategic context supporting your AI Execution Plan</p>
+                  {company&&<p style={{fontSize:12,color:C.greige,margin:"4px 0 0",fontWeight:600}}>{company} · {TODAY}</p>}
                 </div>
-                <button className="no-print" onClick={()=>window.print()} style={{background:C.dark,color:C.white,border:"none",borderRadius:5,padding:"8px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>🖨 Print</button>
+                <button className="no-print" onClick={()=>window.print()} style={{background:C.dark,color:C.white,border:"none",borderRadius:5,padding:"9px 18px",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>🖨 Print</button>
               </div>
-              <div style={{fontSize:14,lineHeight:1.8,color:C.dark}} dangerouslySetInnerHTML={{__html:mdToHtml(bg)}}/>
-              <div style={{marginTop:32,borderTop:`1px solid ${C.midGrey}`,paddingTop:16,display:"flex",alignItems:"center",gap:6}}>
-                <div style={{width:20,height:20,background:C.dark,borderRadius:3,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  <span style={{color:C.white,fontSize:9,fontWeight:800}}>A</span>
+              <div style={{fontSize:14,lineHeight:1.9,color:C.dark}} dangerouslySetInnerHTML={{__html:mdToHtml(bg)}}/>
+              <div style={{marginTop:36,borderTop:`1px solid ${C.midGrey}`,paddingTop:20,display:"flex",alignItems:"center",gap:8}}>
+                <div style={{width:22,height:22,background:C.dark,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <span style={{color:C.white,fontSize:10,fontWeight:800}}>A</span>
                 </div>
-                <span style={{fontSize:11,color:C.greigeDark,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>AILY · aily.dk</span>
+                <span style={{fontSize:12,color:C.greigeDark,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>AILY · aily.dk</span>
               </div>
             </div>
           )}
