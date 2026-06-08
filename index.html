@@ -210,7 +210,13 @@ CONTEXT:
 
     const planSystemPrompt = `You are a world-class AI strategy consultant with deep expertise across industries. Your task is to create a highly specific, actionable AI Execution Plan.
 
-CRITICAL INSTRUCTIONS:
+LANGUAGE RULES — CRITICAL:
+- Detect the language of the strategy input and respond in that SAME language throughout
+- If the strategy is in English → write everything in English
+- If the strategy is in Danish → write everything in Danish
+- The maturity dimension labels (Retning & Strategi, Viden & Træning, Data, Teknologi & Systemer, Governance & Ansvar, Resultater & Fremdrift) are part of the AILY brand framework — keep these Danish labels regardless of language
+- ALL other content (ambition, use case names, tools, gaps, actions, people fields, success criteria) must be in the detected language
+- Do NOT mix languages
 1. Think carefully before writing. Analyse the company context deeply before generating anything.
 2. All use cases must be SPECIFIC to this company — not generic. Reference their actual products, customers, workflows.
 3. Use REAL tool names (e.g. Microsoft Copilot, Claude, ChatGPT, Notion AI, GitHub Copilot, HubSpot AI, Salesforce Einstein, etc.)
@@ -303,7 +309,7 @@ CRITICAL INSTRUCTIONS:
 1. Think deeply before writing. This paper should make the reader feel informed, inspired and slightly urgent.
 2. Name REAL companies, REAL tools, REAL statistics where possible.
 3. Be specific to this company's industry and context — not generic.
-4. Write in the same language as the strategy input (Danish if Danish, English if English).
+4. Detect the language of the strategy input and write the ENTIRE paper in that same language — English if English, Danish if Danish. Never mix.
 5. Use markdown with ## headers. Bold key phrases with **bold**.`;
 
     const loadingStages = [
