@@ -6,44 +6,43 @@
 <title>AI Execution Plan — AILY</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', sans-serif; background: #FAF8F6; }
-textarea, input { font-family: 'Segoe UI', sans-serif; }
-@keyframes pulse { 0%{width:20%} 50%{width:80%} 100%{width:20%} }
-.pulse { animation: pulse 1.8s ease-in-out infinite; }
-@media print { .no-print { display: none !important; } body { background: white; } }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#FAF8F6}
+textarea,input{font-family:'Segoe UI',sans-serif}
+@keyframes pulse{0%{width:20%}50%{width:80%}100%{width:20%}}
+.pulse{animation:pulse 1.8s ease-in-out infinite}
+@media print{.no-print{display:none!important}body{background:white}}
 </style>
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel" data-presets="env,react">
-const { useState, useRef } = React;
-const C = {
-  dark:"#2C2420",blush:"#F4B4B2",blushDark:"#e89a98",
-  greige:"#B0A496",greigeDark:"#8a7e72",offwhite:"#FAF8F6",
-  white:"#ffffff",lightGrey:"#f0ede9",midGrey:"#d4cfc9"
-};
-const PROXY = "https://aily-api-proxy.katjaandersen74.workers.dev";
-const TODAY = new Date().toLocaleDateString("en-GB");
-const YEAR = new Date().getFullYear();
+<script>
+var h = React.createElement;
+var C = {dark:"#2C2420",blush:"#F4B4B2",blushDark:"#e89a98",greige:"#B0A496",greigeDark:"#8a7e72",offwhite:"#FAF8F6",white:"#ffffff",lightGrey:"#f0ede9",midGrey:"#d4cfc9"};
+var PROXY = "https://aily-api-proxy.katjaandersen74.workers.dev";
+var TODAY = new Date().toLocaleDateString("en-GB");
+var YEAR = new Date().getFullYear();
 
-const QUESTIONS = [
+var QUESTIONS = [
   {id:"industry",label:"What industry are you in?",placeholder:"e.g. Law firm, Manufacturing, Finance, Retail..."},
   {id:"aiMaturity",label:"How would you describe your current AI maturity?",placeholder:"e.g. No AI today / Experimenting with ChatGPT / Some tools in production..."},
   {id:"biggestChallenge",label:"What is your single biggest challenge or opportunity right now?",placeholder:"e.g. Too much manual work, losing clients to competitors, scaling operations..."}
 ];
-const STEPS = ["Upload Strategy","Quick Questions","Generating Plan","Your Plan"];
-const MAT_LABELS = [
+
+var STEPS = ["Upload Strategy","Quick Questions","Generating Plan","Your Plan"];
+
+var MAT_LABELS = [
   ["direction","Direction & Strategy"],["knowledge","Knowledge & Training"],
   ["data","Data"],["technology","Technology & Systems"],
   ["governance","Governance & Responsibility"],["results","Results & Progress"]
 ];
-const emptyUC = () => ({name:"",tool:"",buy:false,configure:false,build:false,dataSource:"",dataReady:false,dataNeeds:false,dataGap:false,gdpr:false,confidentiality:false,errors:false,security:false,top5:false});
-const emptyAct = () => ({action:"",owner:"",deadline:""});
-const defaultPlan = {
+
+function emptyUC(){return {name:"",tool:"",buy:false,configure:false,build:false,dataSource:"",dataReady:false,dataNeeds:false,dataGap:false,gdpr:false,confidentiality:false,errors:false,security:false,top5:false};}
+function emptyAct(){return {action:"",owner:"",deadline:""};}
+
+var defaultPlan = {
   ambition:"",
   maturity:{direction:{score:"",gap:""},knowledge:{score:"",gap:""},data:{score:"",gap:""},technology:{score:"",gap:""},governance:{score:"",gap:""},results:{score:"",gap:""}},
   useCases:{daily:[emptyUC(),emptyUC(),emptyUC()],operational:[emptyUC(),emptyUC(),emptyUC()],strategic:[emptyUC(),emptyUC(),emptyUC()]},
@@ -52,131 +51,152 @@ const defaultPlan = {
   actions:{days30:[emptyAct(),emptyAct(),emptyAct()],days90:[emptyAct(),emptyAct(),emptyAct()],days180:[emptyAct(),emptyAct(),emptyAct()]}
 };
 
-function sleep(ms) { return new Promise(function(r){setTimeout(r,ms);}); }
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 
-function Stepper({step}) {
-  return (
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",marginBottom:32}}>
-      {STEPS.map(function(label,i) {
-        return (
-          <div key={i} style={{display:"flex",alignItems:"center"}}>
-            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-              <div style={{width:32,height:32,borderRadius:"50%",background:i<step?C.greige:i===step?C.dark:C.midGrey,color:i<=step?C.white:C.greigeDark,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13}}>
-                {i<step?"✓":i+1}
-              </div>
-              <span style={{fontSize:11,color:i===step?C.dark:C.greigeDark,fontWeight:i===step?700:400,whiteSpace:"nowrap"}}>{label}</span>
-            </div>
-            {i<STEPS.length-1 && <div style={{width:48,height:2,background:i<step?C.greige:C.midGrey,margin:"0 4px",marginBottom:20}}/>}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function Field({value,onChange,multi,placeholder,style}) {
-  var s = Object.assign({width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"8px 10px",fontSize:13,color:C.dark,background:C.white,fontFamily:"inherit",resize:multi?"vertical":"none"},style||{});
-  if (multi) return <textarea value={value} onChange={function(e){onChange(e.target.value);}} placeholder={placeholder} style={Object.assign({},s,{minHeight:72})}/>;
-  return <input value={value} onChange={function(e){onChange(e.target.value);}} placeholder={placeholder} style={Object.assign({},s,{height:36})}/>;
-}
-
-function Check({label,checked,onChange}) {
-  return (
-    <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.dark,cursor:"pointer",marginRight:8,marginBottom:4}}>
-      <input type="checkbox" checked={checked} onChange={function(e){onChange(e.target.checked);}} style={{accentColor:C.dark,width:14,height:14}}/>
-      {label}
-    </label>
-  );
-}
-
-function SecHead({title,color}) {
-  return <div style={{background:color||C.greige,color:C.white,padding:"10px 16px",fontWeight:700,fontSize:12,letterSpacing:"0.08em",textTransform:"uppercase"}}>{title}</div>;
-}
-
-function App() {
-  var s = useState(0); var step=s[0],setStep=s[1];
-  var s2 = useState(""); var strategyText=s2[0],setStrategyText=s2[1];
-  var s3 = useState(""); var fileName=s3[0],setFileName=s3[1];
-  var s4 = useState({}); var answers=s4[0],setAnswers=s4[1];
-  var s5 = useState(""); var companyUrl=s5[0],setCompanyUrl=s5[1];
-  var s6 = useState(false); var loading=s6[0],setLoading=s6[1];
-  var s7 = useState(""); var loadingMsg=s7[0],setLoadingMsg=s7[1];
-  var s8 = useState(""); var loadingDetail=s8[0],setLoadingDetail=s8[1];
-  var s9 = useState(null); var plan=s9[0],setPlan=s9[1];
-  var s10 = useState(""); var bg=s10[0],setBg=s10[1];
-  var s11 = useState("plan"); var activeTab=s11[0],setActiveTab=s11[1];
-  var s12 = useState(""); var company=s12[0],setCompany=s12[1];
-  var s13 = useState(""); var owner=s13[0],setOwner=s13[1];
-  var s14 = useState(false); var consented=s14[0],setConsented=s14[1];
-  var s15 = useState(""); var error=s15[0],setError=s15[1];
-  var fileRef = useRef();
-
-  function callProxy(body) {
-    return fetch(PROXY,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})
-      .then(function(res) {
-        if (!res.ok) {
-          return res.text().then(function(t) {
-            var msg = "Worker error "+res.status+": "+t;
-            if (res.status===429) {
-              try { var j=JSON.parse(t); if(j.error&&j.error.message) msg=j.error.message; } catch(e){}
-            }
-            throw new Error(msg);
-          });
-        }
-        return res.json().then(function(json) {
-          if (json.error) throw new Error("Anthropic error: "+JSON.stringify(json.error));
-          return json;
+function callProxy(body){
+  return fetch(PROXY,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})
+    .then(function(res){
+      if(!res.ok){
+        return res.text().then(function(t){
+          var msg="Worker error "+res.status+": "+t;
+          try{var j=JSON.parse(t);if(j.error&&j.error.message)msg=j.error.message;}catch(e){}
+          throw new Error(msg);
         });
-      })
-      .catch(function(e) {
-        if (e.message && e.message.indexOf("fetch")>-1) throw new Error("Network error — cannot reach Worker: "+e.message);
-        throw e;
+      }
+      return res.json().then(function(json){
+        if(json.error)throw new Error("API error: "+JSON.stringify(json.error));
+        return json;
       });
-  }
-
-  function extractPptx(file) {
-    return JSZip.loadAsync(file).then(function(zip) {
-      var slides = Object.keys(zip.files).filter(function(n){return n.match(/ppt\/slides\/slide[0-9]+\.xml$/);}).sort();
-      var promises = slides.map(function(s) {
-        return zip.files[s].async("string").then(function(xml) {
-          var matches = Array.from(xml.matchAll(/<a:t[^>]*>(.*?)<\/a:t>/g));
-          return matches.map(function(m){return m[1];}).join(" ").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">");
-        });
-      });
-      return Promise.all(promises).then(function(texts){return texts.filter(function(t){return t.trim();}).join("\n");});
     });
-  }
+}
 
-  function handleFile(e) {
-    var file = e.target.files[0];
-    if (!file) return;
+function extractText(content){
+  return (content||[]).filter(function(b){return b.type==="text";}).map(function(b){return b.text||"";}).join("");
+}
+
+function mergePlan(parsed){
+  var p = parsed||{};
+  var uc = p.useCases||{};
+  var pe = p.people||{};
+  var su = p.success||{};
+  return {
+    ambition: p.ambition||"",
+    maturity: Object.assign({},defaultPlan.maturity,p.maturity||{}),
+    useCases:{
+      daily:(uc.daily||[]).map(function(u){return Object.assign({},emptyUC(),u);}),
+      operational:(uc.operational||[]).map(function(u){return Object.assign({},emptyUC(),u);}),
+      strategic:(uc.strategic||[]).map(function(u){return Object.assign({},emptyUC(),u);})
+    },
+    people:{
+      who:pe.who||"",changeNarrative:pe.changeNarrative||"",
+      communicationPlan:pe.communicationPlan||"",leadershipRole:pe.leadershipRole||"",quickWin:pe.quickWin||"",
+      training:Object.assign({},defaultPlan.people.training,pe.training||{}),
+      adoption:Object.assign({},defaultPlan.people.adoption,pe.adoption||{})
+    },
+    success:{
+      after90:su.after90||"",baseline:su.baseline||"",
+      metrics:Object.assign({},defaultPlan.success.metrics,su.metrics||{})
+    },
+    actions:{
+      days30:(p.actions&&p.actions.days30||[]).map(function(a){return Object.assign({},emptyAct(),a);}),
+      days90:(p.actions&&p.actions.days90||[]).map(function(a){return Object.assign({},emptyAct(),a);}),
+      days180:(p.actions&&p.actions.days180||[]).map(function(a){return Object.assign({},emptyAct(),a);})
+    }
+  };
+}
+
+// UI helpers
+function el(tag,props){
+  var children = Array.prototype.slice.call(arguments,2);
+  return h(tag,props,children.length===1?children[0]:children.length>1?children:undefined);
+}
+
+function Field(props){
+  var base = {width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"8px 10px",fontSize:13,color:C.dark,background:C.white,fontFamily:"inherit",resize:props.multi?"vertical":"none"};
+  var s = Object.assign({},base,props.style||{});
+  if(props.multi) return h("textarea",{value:props.value,onChange:function(e){props.onChange(e.target.value);},placeholder:props.placeholder,style:Object.assign({},s,{minHeight:props.minHeight||72})});
+  return h("input",{value:props.value,onChange:function(e){props.onChange(e.target.value);},placeholder:props.placeholder,style:Object.assign({},s,{height:36})});
+}
+
+function Check(props){
+  return h("label",{style:{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.dark,cursor:"pointer",marginRight:8,marginBottom:4}},
+    h("input",{type:"checkbox",checked:props.checked,onChange:function(e){props.onChange(e.target.checked);},style:{accentColor:C.dark,width:14,height:14}}),
+    props.label
+  );
+}
+
+function SecHead(props){
+  return h("div",{style:{background:props.color||C.greige,color:C.white,padding:"10px 16px",fontWeight:700,fontSize:12,letterSpacing:"0.08em",textTransform:"uppercase"}},props.title);
+}
+
+function Stepper(props){
+  return h("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",marginBottom:32}},
+    STEPS.map(function(label,i){
+      return h("div",{key:i,style:{display:"flex",alignItems:"center"}},
+        h("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4}},
+          h("div",{style:{width:32,height:32,borderRadius:"50%",background:i<props.step?C.greige:i===props.step?C.dark:C.midGrey,color:i<=props.step?C.white:C.greigeDark,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13}},i<props.step?"✓":String(i+1)),
+          h("span",{style:{fontSize:11,color:i===props.step?C.dark:C.greigeDark,fontWeight:i===props.step?700:400,whiteSpace:"nowrap"}},label)
+        ),
+        i<STEPS.length-1?h("div",{style:{width:48,height:2,background:i<props.step?C.greige:C.midGrey,margin:"0 4px",marginBottom:20}}):null
+      );
+    })
+  );
+}
+
+function App(){
+  var ss = React.useState(0); var step=ss[0],setStep=ss[1];
+  var ss2 = React.useState(""); var strategyText=ss2[0],setStrategyText=ss2[1];
+  var ss3 = React.useState(""); var fileName=ss3[0],setFileName=ss3[1];
+  var ss4 = React.useState({}); var answers=ss4[0],setAnswers=ss4[1];
+  var ss5 = React.useState(""); var companyUrl=ss5[0],setCompanyUrl=ss5[1];
+  var ss6 = React.useState(false); var loading=ss6[0],setLoading=ss6[1];
+  var ss7 = React.useState(""); var loadingMsg=ss7[0],setLoadingMsg=ss7[1];
+  var ss8 = React.useState(""); var loadingDetail=ss8[0],setLoadingDetail=ss8[1];
+  var ss9 = React.useState(null); var plan=ss9[0],setPlan=ss9[1];
+  var ss10 = React.useState(""); var bg=ss10[0],setBg=ss10[1];
+  var ss11 = React.useState("plan"); var activeTab=ss11[0],setActiveTab=ss11[1];
+  var ss12 = React.useState(""); var company=ss12[0],setCompany=ss12[1];
+  var ss13 = React.useState(""); var owner=ss13[0],setOwner=ss13[1];
+  var ss14 = React.useState(false); var consented=ss14[0],setConsented=ss14[1];
+  var ss15 = React.useState(""); var error=ss15[0],setError=ss15[1];
+  var fileRef = React.useRef();
+
+  function handleFile(e){
+    var file=e.target.files[0];
+    if(!file)return;
     setFileName(file.name);
     setLoading(true);
-    setLoadingMsg("Reading your document...");
-    var isPptx = file.name.toLowerCase().endsWith(".pptx");
-    if (isPptx) {
-      extractPptx(file).then(function(raw) {
+    var isPptx=file.name.toLowerCase().endsWith(".pptx");
+    if(isPptx){
+      JSZip.loadAsync(file).then(function(zip){
+        var slides=Object.keys(zip.files).filter(function(n){return n.match(/ppt\/slides\/slide[0-9]+\.xml$/);}).sort();
+        return Promise.all(slides.map(function(s){
+          return zip.files[s].async("string").then(function(xml){
+            var m=Array.from(xml.matchAll(/<a:t[^>]*>(.*?)<\/a:t>/g));
+            return m.map(function(x){return x[1];}).join(" ").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">");
+          });
+        }));
+      }).then(function(texts){
+        var raw=texts.filter(function(t){return t.trim();}).join("\n");
         return callProxy({model:"claude-sonnet-4-5",max_tokens:1500,messages:[{role:"user",content:"Summarise the key strategic priorities, goals, challenges from this presentation in max 600 words:\n\n"+raw.slice(0,8000)}]});
-      }).then(function(data) {
-        var txt = data.content.filter(function(b){return b.type==="text";}).map(function(b){return b.text||"";}).join("\n");
-        setStrategyText(txt);
+      }).then(function(data){
+        setStrategyText(extractText(data.content));
         setLoading(false);
-      }).catch(function() {
+      }).catch(function(){
         setStrategyText("Could not extract automatically. Please describe your strategy below.");
         setLoading(false);
       });
     } else {
-      var reader = new FileReader();
-      reader.onload = function(ev) {
-        var b64 = ev.target.result.split(",")[1];
+      var reader=new FileReader();
+      reader.onload=function(ev){
+        var b64=ev.target.result.split(",")[1];
         callProxy({model:"claude-sonnet-4-5",max_tokens:1500,messages:[{role:"user",content:[
           {type:"document",source:{type:"base64",media_type:"application/pdf",data:b64}},
           {type:"text",text:"Summarise the key strategic priorities, goals, challenges from this document in max 600 words."}
-        ]}]}).then(function(data) {
-          var txt = data.content.filter(function(b){return b.type==="text";}).map(function(b){return b.text||"";}).join("\n");
-          setStrategyText(txt);
+        ]}]}).then(function(data){
+          setStrategyText(extractText(data.content));
           setLoading(false);
-        }).catch(function() {
+        }).catch(function(){
           setStrategyText("Could not extract automatically. Please describe your strategy below.");
           setLoading(false);
         });
@@ -185,397 +205,386 @@ function App() {
     }
   }
 
-  function mergePlan(parsed) {
-    return Object.assign({},defaultPlan,parsed,{
-      maturity:Object.assign({},defaultPlan.maturity,parsed.maturity||{}),
-      useCases:{
-        daily:(parsed.useCases&&parsed.useCases.daily||[]).map(function(u){return Object.assign({},emptyUC(),u);}),
-        operational:(parsed.useCases&&parsed.useCases.operational||[]).map(function(u){return Object.assign({},emptyUC(),u);}),
-        strategic:(parsed.useCases&&parsed.useCases.strategic||[]).map(function(u){return Object.assign({},emptyUC(),u);})
-      },
-      people:Object.assign({},defaultPlan.people,parsed.people||{},{
-        training:Object.assign({},defaultPlan.people.training,(parsed.people&&parsed.people.training)||{}),
-        adoption:Object.assign({},defaultPlan.people.adoption,(parsed.people&&parsed.people.adoption)||{})
-      }),
-      success:Object.assign({},defaultPlan.success,parsed.success||{},{
-        metrics:Object.assign({},defaultPlan.success.metrics,(parsed.success&&parsed.success.metrics)||{})
-      })
-    });
-  }
-
-  function generate() {
-    setStep(2); setLoading(true); setError("");
-    var stages = [
+  function generate(){
+    setStep(2);setLoading(true);setError("");
+    var stages=[
       ["🔍 Reading your strategy...","Extracting priorities and context"],
       ["🌍 Researching your industry...","Fetching market intelligence and competitor moves"],
       ["💡 Identifying AI opportunities...","Matching use cases to your specific situation"],
       ["🗺️ Building your action plan...","Sequencing 30/90/180 day priorities"],
-      ["📚 Writing background intelligence...","Compiling market research and inspiration"]
+      ["📚 Writing background paper...","Compiling market research and inspiration"]
     ];
-    var si = 0;
-    setLoadingMsg(stages[0][0]); setLoadingDetail(stages[0][1]);
-    var iv = setInterval(function(){
-      si=(si+1)%stages.length;
-      setLoadingMsg(stages[si][0]); setLoadingDetail(stages[si][1]);
-    },4500);
+    var si=0;
+    setLoadingMsg(stages[0][0]);setLoadingDetail(stages[0][1]);
+    var iv=setInterval(function(){si=(si+1)%stages.length;setLoadingMsg(stages[si][0]);setLoadingDetail(stages[si][1]);},4500);
 
-    var ctx = "COMPANY: "+(company||"Not specified")+"\nWEBSITE: "+(companyUrl||"Not provided")+"\nSTRATEGY:\n"+strategyText+"\nINDUSTRY: "+(answers.industry||"Infer from strategy")+"\nAI MATURITY: "+(answers.aiMaturity||"Not specified")+"\nBIGGEST CHALLENGE: "+(answers.biggestChallenge||"Not specified")+"\nTODAY: "+TODAY+" (Year: "+YEAR+")";
+    var ctx="COMPANY: "+(company||"Not specified")+"\nWEBSITE: "+(companyUrl||"Not provided")+"\nSTRATEGY:\n"+strategyText+"\nINDUSTRY: "+(answers.industry||"Infer from strategy")+"\nAI MATURITY: "+(answers.aiMaturity||"Not specified")+"\nBIGGEST CHALLENGE: "+(answers.biggestChallenge||"Not specified")+"\nTODAY: "+TODAY+" (Year: "+YEAR+")";
 
-    var planSystem = "You are a world-class AI strategy consultant. Write ALL content in English only.\n\nUSE CASE RULES:\n- A use case describes WHAT AI DOES — a capability, not a project task\n- CORRECT: 'AI-assisted summarisation of customer emails before response'\n- WRONG: 'Implement email AI system'\n- Daily = AI in everyday individual work\n- Operational = AI automating business processes\n- Strategic = AI creating competitive advantage\n- Action plan items must be IMPLEMENTATION STEPS, not restatements of use cases\n\nReturn ONLY valid JSON, no markdown:\n{\"ambition\":\"string\",\"maturity\":{\"direction\":{\"score\":\"3\",\"gap\":\"string\"},\"knowledge\":{\"score\":\"3\",\"gap\":\"string\"},\"data\":{\"score\":\"3\",\"gap\":\"string\"},\"technology\":{\"score\":\"3\",\"gap\":\"string\"},\"governance\":{\"score\":\"3\",\"gap\":\"string\"},\"results\":{\"score\":\"3\",\"gap\":\"string\"}},\"useCases\":{\"daily\":[{\"name\":\"string\",\"tool\":\"string\",\"buy\":true,\"configure\":false,\"build\":false,\"dataSource\":\"string\",\"dataReady\":true,\"dataNeeds\":false,\"dataGap\":false,\"gdpr\":true,\"confidentiality\":false,\"errors\":false,\"security\":false,\"top5\":true},{\"name\":\"string\",\"tool\":\"string\",\"buy\":false,\"configure\":true,\"build\":false,\"dataSource\":\"string\",\"dataReady\":false,\"dataNeeds\":true,\"dataGap\":false,\"gdpr\":false,\"confidentiality\":true,\"errors\":false,\"security\":false,\"top5\":false},{\"name\":\"string\",\"tool\":\"string\",\"buy\":true,\"configure\":false,\"build\":false,\"dataSource\":\"string\",\"dataReady\":true,\"dataNeeds\":false,\"dataGap\":false,\"gdpr\":true,\"confidentiality\":false,\"errors\":true,\"security\":false,\"top5\":true}],\"operational\":[{\"name\":\"string\",\"tool\":\"string\",\"buy\":false,\"configure\":true,\"build\":false,\"dataSource\":\"string\",\"dataReady\":false,\"dataNeeds\":true,\"dataGap\":false,\"gdpr\":true,\"confidentiality\":true,\"errors\":false,\"security\":false,\"top5\":true},{\"name\":\"string\",\"tool\":\"string\",\"buy\":false,\"configure\":false,\"build\":true,\"dataSource\":\"string\",\"dataReady\":false,\"dataNeeds\":false,\"dataGap\":true,\"gdpr\":false,\"confidentiality\":true,\"errors\":true,\"security\":true,\"top5\":false},{\"name\":\"string\",\"tool\":\"string\",\"buy\":true,\"configure\":false,\"build\":false,\"dataSource\":\"string\",\"dataReady\":true,\"dataNeeds\":false,\"dataGap\":false,\"gdpr\":true,\"confidentiality\":false,\"errors\":false,\"security\":false,\"top5\":true}],\"strategic\":[{\"name\":\"string\",\"tool\":\"string\",\"buy\":false,\"configure\":false,\"build\":true,\"dataSource\":\"string\",\"dataReady\":false,\"dataNeeds\":false,\"dataGap\":true,\"gdpr\":false,\"confidentiality\":true,\"errors\":true,\"security\":true,\"top5\":true},{\"name\":\"string\",\"tool\":\"string\",\"buy\":false,\"configure\":true,\"build\":false,\"dataSource\":\"string\",\"dataReady\":false,\"dataNeeds\":true,\"dataGap\":false,\"gdpr\":true,\"confidentiality\":false,\"errors\":false,\"security\":false,\"top5\":false},{\"name\":\"string\",\"tool\":\"string\",\"buy\":true,\"configure\":false,\"build\":false,\"dataSource\":\"string\",\"dataReady\":true,\"dataNeeds\":false,\"dataGap\":false,\"gdpr\":false,\"confidentiality\":true,\"errors\":false,\"security\":false,\"top5\":false}]},\"people\":{\"who\":\"string\",\"changeNarrative\":\"string\",\"communicationPlan\":\"string\",\"leadershipRole\":\"string\",\"quickWin\":\"string\",\"training\":{\"intro\":true,\"prompt\":true,\"toolSpecific\":false,\"leadership\":true},\"adoption\":{\"guidelines\":true,\"champions\":true,\"workshops\":false,\"support\":true}},\"success\":{\"after90\":\"string\",\"metrics\":{\"time\":true,\"quality\":true,\"adoption\":true,\"revenue\":false,\"risk\":false},\"baseline\":\"string\"},\"actions\":{\"days30\":[{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+YEAR+"\"},{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+YEAR+"\"},{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+YEAR+"\"}],\"days90\":[{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+YEAR+"\"},{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+YEAR+"\"},{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+YEAR+"\"}],\"days180\":[{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+(YEAR+1)+"\"},{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+(YEAR+1)+"\"},{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+(YEAR+1)+"\"}]}}";
+    var planSys="You are a world-class AI strategy consultant. Write ALL content in English.\n\nUSE CASE RULES:\n- Describe WHAT AI DOES — a capability not a project task\n- CORRECT: 'AI-assisted summarisation of customer emails'\n- WRONG: 'Implement email AI system'\n- Daily=everyday AI work, Operational=process automation, Strategic=competitive advantage\n- Action plan items must be IMPLEMENTATION STEPS not restatements of use cases\n- Use REAL tool names\n- All dates must use year "+YEAR+" or "+(YEAR+1)+"\n\nReturn ONLY valid JSON:\n{\"ambition\":\"string\",\"maturity\":{\"direction\":{\"score\":\"3\",\"gap\":\"string\"},\"knowledge\":{\"score\":\"3\",\"gap\":\"string\"},\"data\":{\"score\":\"3\",\"gap\":\"string\"},\"technology\":{\"score\":\"3\",\"gap\":\"string\"},\"governance\":{\"score\":\"3\",\"gap\":\"string\"},\"results\":{\"score\":\"3\",\"gap\":\"string\"}},\"useCases\":{\"daily\":[{\"name\":\"string\",\"tool\":\"string\",\"buy\":true,\"configure\":false,\"build\":false,\"dataSource\":\"string\",\"dataReady\":true,\"dataNeeds\":false,\"dataGap\":false,\"gdpr\":true,\"confidentiality\":false,\"errors\":false,\"security\":false,\"top5\":true},{\"name\":\"string\",\"tool\":\"string\",\"buy\":false,\"configure\":true,\"build\":false,\"dataSource\":\"string\",\"dataReady\":false,\"dataNeeds\":true,\"dataGap\":false,\"gdpr\":false,\"confidentiality\":true,\"errors\":false,\"security\":false,\"top5\":false},{\"name\":\"string\",\"tool\":\"string\",\"buy\":true,\"configure\":false,\"build\":false,\"dataSource\":\"string\",\"dataReady\":true,\"dataNeeds\":false,\"dataGap\":false,\"gdpr\":true,\"confidentiality\":false,\"errors\":true,\"security\":false,\"top5\":true}],\"operational\":[{\"name\":\"string\",\"tool\":\"string\",\"buy\":false,\"configure\":true,\"build\":false,\"dataSource\":\"string\",\"dataReady\":false,\"dataNeeds\":true,\"dataGap\":false,\"gdpr\":true,\"confidentiality\":true,\"errors\":false,\"security\":false,\"top5\":true},{\"name\":\"string\",\"tool\":\"string\",\"buy\":false,\"configure\":false,\"build\":true,\"dataSource\":\"string\",\"dataReady\":false,\"dataNeeds\":false,\"dataGap\":true,\"gdpr\":false,\"confidentiality\":true,\"errors\":true,\"security\":true,\"top5\":false},{\"name\":\"string\",\"tool\":\"string\",\"buy\":true,\"configure\":false,\"build\":false,\"dataSource\":\"string\",\"dataReady\":true,\"dataNeeds\":false,\"dataGap\":false,\"gdpr\":true,\"confidentiality\":false,\"errors\":false,\"security\":false,\"top5\":true}],\"strategic\":[{\"name\":\"string\",\"tool\":\"string\",\"buy\":false,\"configure\":false,\"build\":true,\"dataSource\":\"string\",\"dataReady\":false,\"dataNeeds\":false,\"dataGap\":true,\"gdpr\":false,\"confidentiality\":true,\"errors\":true,\"security\":true,\"top5\":true},{\"name\":\"string\",\"tool\":\"string\",\"buy\":false,\"configure\":true,\"build\":false,\"dataSource\":\"string\",\"dataReady\":false,\"dataNeeds\":true,\"dataGap\":false,\"gdpr\":true,\"confidentiality\":false,\"errors\":false,\"security\":false,\"top5\":false},{\"name\":\"string\",\"tool\":\"string\",\"buy\":true,\"configure\":false,\"build\":false,\"dataSource\":\"string\",\"dataReady\":true,\"dataNeeds\":false,\"dataGap\":false,\"gdpr\":false,\"confidentiality\":true,\"errors\":false,\"security\":false,\"top5\":false}]},\"people\":{\"who\":\"string\",\"changeNarrative\":\"string\",\"communicationPlan\":\"string\",\"leadershipRole\":\"string\",\"quickWin\":\"string\",\"training\":{\"intro\":true,\"prompt\":true,\"toolSpecific\":false,\"leadership\":true},\"adoption\":{\"guidelines\":true,\"champions\":true,\"workshops\":false,\"support\":true}},\"success\":{\"after90\":\"string\",\"metrics\":{\"time\":true,\"quality\":true,\"adoption\":true,\"revenue\":false,\"risk\":false},\"baseline\":\"string\"},\"actions\":{\"days30\":[{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+YEAR+"\"},{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+YEAR+"\"},{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+YEAR+"\"}],\"days90\":[{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+YEAR+"\"},{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+YEAR+"\"},{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+YEAR+"\"}],\"days180\":[{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+(YEAR+1)+"\"},{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+(YEAR+1)+"\"},{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+(YEAR+1)+"\"}]}}";
 
-    var bgSystem = "You are a senior AI market intelligence analyst. Write a rich inspiring background intelligence paper in English only. Name real companies, tools, statistics. Use markdown ## headers and **bold**.";
+    var bgSys="You are a senior AI market intelligence analyst. Write in English only. Use markdown ## headers and **bold**. Name real companies, tools, statistics.";
 
-    callProxy({model:"claude-sonnet-4-5",max_tokens:5000,tools:[{type:"web_search_20250305",name:"web_search"}],system:planSystem,messages:[{role:"user",content:"Research this company's industry and generate a complete AI Execution Plan.\n\n"+ctx}]})
-      .then(function(pd) {
-        var raw = pd.content.filter(function(b){return b.type==="text";}).map(function(b){return b.text||"";}).join("");
-        var parsed = JSON.parse(raw.replace(/```json|```/g,"").trim());
-        setPlan(mergePlan(parsed));
-        return sleep(5000);
-      })
-      .then(function() {
-        return callProxy({model:"claude-sonnet-4-5",max_tokens:3000,tools:[{type:"web_search_20250305",name:"web_search"}],system:bgSystem,messages:[{role:"user",content:"Research and write a 700-900 word background intelligence paper.\n\nContext:\n"+ctx+"\n\n## Market & AI Trends\n## The Biggest AI Opportunities\n## Technology Landscape\n## Risks & Governance\n## Why Act Now"}]});
-      })
-      .then(function(bgd) {
-        var txt = bgd.content.filter(function(b){return b.type==="text";}).map(function(b){return b.text||"";}).join("");
-        setBg(txt);
-        setStep(3);
-        clearInterval(iv); setLoading(false);
-      })
-      .catch(function(err) {
-        setError("Error: "+err.message);
-        setStep(1);
-        clearInterval(iv); setLoading(false);
-      });
+    callProxy({model:"claude-sonnet-4-5",max_tokens:5000,tools:[{type:"web_search_20250305",name:"web_search"}],system:planSys,messages:[{role:"user",content:"Research this company and generate a complete AI Execution Plan.\n\n"+ctx}]})
+    .then(function(pd){
+      var raw=extractText(pd.content);
+      var parsed=JSON.parse(raw.replace(/```json|```/g,"").trim());
+      setPlan(mergePlan(parsed));
+      return sleep(5000);
+    })
+    .then(function(){
+      return callProxy({model:"claude-sonnet-4-5",max_tokens:3000,tools:[{type:"web_search_20250305",name:"web_search"}],system:bgSys,messages:[{role:"user",content:"Write a 700-900 word background intelligence paper.\n\nContext:\n"+ctx+"\n\n## Market & AI Trends\n## The Biggest AI Opportunities\n## Technology Landscape\n## Risks & Governance\n## Why Act Now"}]});
+    })
+    .then(function(bgd){
+      setBg(extractText(bgd.content));
+      setStep(3);
+      clearInterval(iv);setLoading(false);
+    })
+    .catch(function(err){
+      setError("Error: "+err.message);
+      setStep(1);
+      clearInterval(iv);setLoading(false);
+    });
   }
 
-  function updUC(cat,idx,f,v) {
-    setPlan(function(p) {
-      var ucs = p.useCases[cat].map(function(u,i){return i===idx?Object.assign({},u,{[f]:v}):u;});
+  function updUC(cat,idx,f,v){
+    setPlan(function(p){
+      var ucs=p.useCases[cat].map(function(u,i){return i===idx?Object.assign({},u,{[f]:v}):u;});
       return Object.assign({},p,{useCases:Object.assign({},p.useCases,{[cat]:ucs})});
     });
   }
 
-  function updAct(ph,idx,f,v) {
-    setPlan(function(p) {
-      var acts = p.actions[ph].map(function(a,i){return i===idx?Object.assign({},a,{[f]:v}):a;});
+  function updAct(ph,idx,f,v){
+    setPlan(function(p){
+      var acts=p.actions[ph].map(function(a,i){return i===idx?Object.assign({},a,{[f]:v}):a;});
       return Object.assign({},p,{actions:Object.assign({},p.actions,{[ph]:acts})});
     });
   }
 
-  function mdToHtml(t) {
+  function mdToHtml(t){
     return (t||"")
-      .replace(/## (.*)/g,"<h3 style=\"color:"+C.dark+";margin:24px 0 10px;font-size:16px;border-bottom:2px solid "+C.blush+";padding-bottom:6px;font-weight:700\">$1</h3>")
+      .replace(/## (.*)/g,"<h3 style='color:"+C.dark+";margin:24px 0 10px;font-size:16px;border-bottom:2px solid "+C.blush+";padding-bottom:6px;font-weight:700'>$1</h3>")
       .replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
       .replace(/\n/g,"<br/>");
   }
 
-  if (step===0) return (
-    <div style={{background:C.offwhite,minHeight:"100vh",padding:32}}>
-      <div style={{maxWidth:640,margin:"0 auto"}}>
-        <div style={{marginBottom:24}}>
-          <span style={{fontSize:11,color:C.greigeDark,letterSpacing:"0.12em",textTransform:"uppercase"}}>aily.dk</span>
-          <h1 style={{fontSize:26,fontWeight:800,color:C.dark,margin:"4px 0 0"}}>AI Execution Plan Generator</h1>
-          <p style={{color:C.greigeDark,fontSize:14,margin:"6px 0 0"}}>Upload your strategy and receive a tailored AI execution plan in minutes.</p>
-        </div>
-        <Stepper step={0}/>
-        <div style={{background:C.white,borderRadius:8,padding:32,boxShadow:"0 2px 12px rgba(44,36,32,0.07)"}}>
-          <h2 style={{fontSize:16,fontWeight:700,color:C.dark,marginTop:0,marginBottom:16}}>Step 1 — Upload your strategy</h2>
-          <div onClick={function(){fileRef.current.click();}} style={{border:"2px dashed "+C.greige,borderRadius:8,padding:"28px 24px",textAlign:"center",cursor:"pointer",background:C.offwhite,marginBottom:16}}>
-            <div style={{fontSize:32,marginBottom:8}}>📄</div>
-            <div style={{fontWeight:600,color:C.dark,fontSize:14}}>Click to upload PDF or PowerPoint</div>
-            <div style={{fontSize:12,color:C.greigeDark,marginTop:4}}>Accepts .pdf and .pptx</div>
-            {fileName && <div style={{marginTop:10,color:C.blushDark,fontWeight:600,fontSize:13}}>✓ {fileName}</div>}
-          </div>
-          <input ref={fileRef} type="file" accept=".pdf,.pptx" onChange={handleFile} style={{display:"none"}}/>
-          {loading && <div style={{color:C.greigeDark,fontSize:13,marginBottom:12,textAlign:"center"}}>⏳ Reading document...</div>}
-          <div style={{marginBottom:16}}>
-            <label style={{fontSize:13,fontWeight:600,color:C.dark,display:"block",marginBottom:6}}>Or describe your strategy here:</label>
-            <textarea value={strategyText} onChange={function(e){setStrategyText(e.target.value);}} placeholder="Paste or type your key strategic priorities, goals, challenges..." style={{width:"100%",minHeight:120,border:"1px solid "+C.midGrey,borderRadius:6,padding:"10px 12px",fontSize:13,color:C.dark,fontFamily:"inherit",resize:"vertical"}}/>
-          </div>
-          <div style={{display:"flex",gap:12,marginBottom:16}}>
-            <div style={{flex:1}}>
-              <label style={{fontSize:12,fontWeight:600,color:C.dark,display:"block",marginBottom:4}}>Company name</label>
-              <input value={company} onChange={function(e){setCompany(e.target.value);}} placeholder="Acme A/S" style={{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"8px 10px",fontSize:13}}/>
-            </div>
-            <div style={{flex:1}}>
-              <label style={{fontSize:12,fontWeight:600,color:C.dark,display:"block",marginBottom:4}}>Owner / Contact</label>
-              <input value={owner} onChange={function(e){setOwner(e.target.value);}} placeholder="Your name" style={{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"8px 10px",fontSize:13}}/>
-            </div>
-          </div>
-          <div style={{marginBottom:16}}>
-            <label style={{fontSize:12,fontWeight:600,color:C.dark,display:"block",marginBottom:4}}>Company website <span style={{fontWeight:400,color:C.greigeDark}}>(optional — helps us research your context)</span></label>
-            <input value={companyUrl} onChange={function(e){setCompanyUrl(e.target.value);}} placeholder="https://www.yourcompany.com" style={{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"8px 10px",fontSize:13}}/>
-          </div>
-          <div style={{background:C.lightGrey,borderRadius:8,padding:"14px 16px",border:"1px solid "+C.midGrey,marginBottom:16}}>
-            <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
-              <input type="checkbox" id="consent" checked={consented} onChange={function(e){setConsented(e.target.checked);}} style={{accentColor:C.dark,width:16,height:16,marginTop:2,flexShrink:0}}/>
-              <label htmlFor="consent" style={{fontSize:12,color:C.dark,lineHeight:1.6,cursor:"pointer"}}>
-                <strong>Privacy notice:</strong> Your document is sent to Anthropic's API for processing. It is <strong>not stored by AILY</strong>. Anthropic does not use API data for model training. Do not upload strictly confidential documents without consulting your organisation's data policy.
-              </label>
-            </div>
-            <div style={{marginTop:8,paddingLeft:26,fontSize:11,color:C.greigeDark}}>🔒 No data stored by AILY · Session only · Processed via Anthropic API</div>
-          </div>
-          {error && <div style={{marginBottom:12,background:"#fde8e8",border:"1px solid #f4b4b2",borderRadius:6,padding:"10px 14px",fontSize:12,color:"#8b0000"}}>⚠️ {error}</div>}
-          <button onClick={function(){if(strategyText.trim()&&consented)setStep(1);}} disabled={!strategyText.trim()||!consented}
-            style={{background:strategyText.trim()&&consented?C.dark:C.midGrey,color:C.white,border:"none",borderRadius:6,padding:"12px 28px",fontSize:14,fontWeight:700,cursor:strategyText.trim()&&consented?"pointer":"not-allowed",width:"100%"}}>
-            Continue →
-          </button>
-        </div>
-      </div>
-    </div>
+  // STEP 0
+  if(step===0) return h("div",{style:{background:C.offwhite,minHeight:"100vh",padding:32}},
+    h("div",{style:{maxWidth:640,margin:"0 auto"}},
+      h("div",{style:{marginBottom:24}},
+        h("span",{style:{fontSize:11,color:C.greigeDark,letterSpacing:"0.12em",textTransform:"uppercase"}},"aily.dk"),
+        h("h1",{style:{fontSize:26,fontWeight:800,color:C.dark,margin:"4px 0 0"}},"AI Execution Plan Generator"),
+        h("p",{style:{color:C.greigeDark,fontSize:14,margin:"6px 0 0"}},"Upload your strategy and receive a tailored AI execution plan in minutes.")
+      ),
+      h(Stepper,{step:0}),
+      h("div",{style:{background:C.white,borderRadius:8,padding:32,boxShadow:"0 2px 12px rgba(44,36,32,0.07)"}},
+        h("h2",{style:{fontSize:16,fontWeight:700,color:C.dark,marginTop:0,marginBottom:16}},"Step 1 — Upload your strategy"),
+        h("div",{onClick:function(){fileRef.current.click();},style:{border:"2px dashed "+C.greige,borderRadius:8,padding:"28px 24px",textAlign:"center",cursor:"pointer",background:C.offwhite,marginBottom:16}},
+          h("div",{style:{fontSize:32,marginBottom:8}},"📄"),
+          h("div",{style:{fontWeight:600,color:C.dark,fontSize:14}},"Click to upload PDF or PowerPoint"),
+          h("div",{style:{fontSize:12,color:C.greigeDark,marginTop:4}},"Accepts .pdf and .pptx"),
+          fileName?h("div",{style:{marginTop:10,color:C.blushDark,fontWeight:600,fontSize:13}},"✓ "+fileName):null
+        ),
+        h("input",{ref:fileRef,type:"file",accept:".pdf,.pptx",onChange:handleFile,style:{display:"none"}}),
+        loading?h("div",{style:{color:C.greigeDark,fontSize:13,marginBottom:12,textAlign:"center"}},"⏳ Reading document..."):null,
+        h("div",{style:{marginBottom:16}},
+          h("label",{style:{fontSize:13,fontWeight:600,color:C.dark,display:"block",marginBottom:6}},"Or describe your strategy here:"),
+          h("textarea",{value:strategyText,onChange:function(e){setStrategyText(e.target.value);},placeholder:"Paste or type your key strategic priorities, goals, challenges...",style:{width:"100%",minHeight:120,border:"1px solid "+C.midGrey,borderRadius:6,padding:"10px 12px",fontSize:13,color:C.dark,fontFamily:"inherit",resize:"vertical"}})
+        ),
+        h("div",{style:{display:"flex",gap:12,marginBottom:16}},
+          h("div",{style:{flex:1}},
+            h("label",{style:{fontSize:12,fontWeight:600,color:C.dark,display:"block",marginBottom:4}},"Company name"),
+            h("input",{value:company,onChange:function(e){setCompany(e.target.value);},placeholder:"Acme A/S",style:{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"8px 10px",fontSize:13}})
+          ),
+          h("div",{style:{flex:1}},
+            h("label",{style:{fontSize:12,fontWeight:600,color:C.dark,display:"block",marginBottom:4}},"Owner / Contact"),
+            h("input",{value:owner,onChange:function(e){setOwner(e.target.value);},placeholder:"Your name",style:{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"8px 10px",fontSize:13}})
+          )
+        ),
+        h("div",{style:{marginBottom:16}},
+          h("label",{style:{fontSize:12,fontWeight:600,color:C.dark,display:"block",marginBottom:4}},
+            "Company website ",
+            h("span",{style:{fontWeight:400,color:C.greigeDark}},"(optional — helps us research your context)")
+          ),
+          h("input",{value:companyUrl,onChange:function(e){setCompanyUrl(e.target.value);},placeholder:"https://www.yourcompany.com",style:{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"8px 10px",fontSize:13}})
+        ),
+        h("div",{style:{background:C.lightGrey,borderRadius:8,padding:"14px 16px",border:"1px solid "+C.midGrey,marginBottom:16}},
+          h("div",{style:{display:"flex",gap:10,alignItems:"flex-start"}},
+            h("input",{type:"checkbox",id:"consent",checked:consented,onChange:function(e){setConsented(e.target.checked);},style:{accentColor:C.dark,width:16,height:16,marginTop:2,flexShrink:0}}),
+            h("label",{htmlFor:"consent",style:{fontSize:12,color:C.dark,lineHeight:1.6,cursor:"pointer"}},
+              h("strong",null,"Privacy notice:"),
+              " Your document is sent to Anthropic's API for processing. It is ",
+              h("strong",null,"not stored by AILY"),
+              ". Anthropic does not use API data for model training."
+            )
+          ),
+          h("div",{style:{marginTop:8,paddingLeft:26,fontSize:11,color:C.greigeDark}},"🔒 No data stored by AILY · Session only · Processed via Anthropic API")
+        ),
+        error?h("div",{style:{marginBottom:12,background:"#fde8e8",border:"1px solid #f4b4b2",borderRadius:6,padding:"10px 14px",fontSize:12,color:"#8b0000"}},"⚠️ "+error):null,
+        h("button",{onClick:function(){if(strategyText.trim()&&consented)setStep(1);},disabled:!strategyText.trim()||!consented,style:{background:strategyText.trim()&&consented?C.dark:C.midGrey,color:C.white,border:"none",borderRadius:6,padding:"12px 28px",fontSize:14,fontWeight:700,cursor:strategyText.trim()&&consented?"pointer":"not-allowed",width:"100%"}},"Continue →")
+      )
+    )
   );
 
-  if (step===1) return (
-    <div style={{background:C.offwhite,minHeight:"100vh",padding:32}}>
-      <div style={{maxWidth:640,margin:"0 auto"}}>
-        <div style={{marginBottom:24}}>
-          <span style={{fontSize:11,color:C.greigeDark,letterSpacing:"0.12em",textTransform:"uppercase"}}>aily.dk</span>
-          <h1 style={{fontSize:26,fontWeight:800,color:C.dark,margin:"4px 0 0"}}>AI Execution Plan Generator</h1>
-        </div>
-        <Stepper step={1}/>
-        <div style={{background:C.white,borderRadius:8,padding:32,boxShadow:"0 2px 12px rgba(44,36,32,0.07)"}}>
-          <h2 style={{fontSize:16,fontWeight:700,color:C.dark,marginTop:0,marginBottom:6}}>Step 2 — Three quick questions</h2>
-          <p style={{fontSize:13,color:C.greigeDark,marginBottom:20}}>Your answers sharpen the plan. The more specific, the better.</p>
-          {error && <div style={{marginBottom:16,background:"#fde8e8",border:"1px solid #f4b4b2",borderRadius:6,padding:"10px 14px",fontSize:12,color:"#8b0000"}}>⚠️ {error}</div>}
-          {QUESTIONS.map(function(q) {
-            return (
-              <div key={q.id} style={{marginBottom:18}}>
-                <label style={{fontSize:13,fontWeight:600,color:C.dark,display:"block",marginBottom:6}}>{q.label}</label>
-                <input value={answers[q.id]||""} onChange={function(e){setAnswers(function(a){return Object.assign({},a,{[q.id]:e.target.value});});}} placeholder={q.placeholder}
-                  style={{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"9px 12px",fontSize:13,color:C.dark,fontFamily:"inherit"}}/>
-              </div>
-            );
-          })}
-          <div style={{display:"flex",gap:12,marginTop:8}}>
-            <button onClick={function(){setStep(0);}} style={{background:C.offwhite,color:C.dark,border:"1px solid "+C.midGrey,borderRadius:6,padding:"11px 20px",fontSize:13,fontWeight:600,cursor:"pointer"}}>← Back</button>
-            <button onClick={generate} style={{flex:1,background:C.dark,color:C.white,border:"none",borderRadius:6,padding:"12px 28px",fontSize:14,fontWeight:700,cursor:"pointer"}}>Generate My AI Execution Plan →</button>
-          </div>
-        </div>
-      </div>
-    </div>
+  // STEP 1
+  if(step===1) return h("div",{style:{background:C.offwhite,minHeight:"100vh",padding:32}},
+    h("div",{style:{maxWidth:640,margin:"0 auto"}},
+      h("div",{style:{marginBottom:24}},
+        h("span",{style:{fontSize:11,color:C.greigeDark,letterSpacing:"0.12em",textTransform:"uppercase"}},"aily.dk"),
+        h("h1",{style:{fontSize:26,fontWeight:800,color:C.dark,margin:"4px 0 0"}},"AI Execution Plan Generator")
+      ),
+      h(Stepper,{step:1}),
+      h("div",{style:{background:C.white,borderRadius:8,padding:32,boxShadow:"0 2px 12px rgba(44,36,32,0.07)"}},
+        h("h2",{style:{fontSize:16,fontWeight:700,color:C.dark,marginTop:0,marginBottom:6}},"Step 2 — Three quick questions"),
+        h("p",{style:{fontSize:13,color:C.greigeDark,marginBottom:20}},"Your answers sharpen the plan. The more specific, the better."),
+        error?h("div",{style:{marginBottom:16,background:"#fde8e8",border:"1px solid #f4b4b2",borderRadius:6,padding:"10px 14px",fontSize:12,color:"#8b0000"}},"⚠️ "+error):null,
+        QUESTIONS.map(function(q){
+          return h("div",{key:q.id,style:{marginBottom:18}},
+            h("label",{style:{fontSize:13,fontWeight:600,color:C.dark,display:"block",marginBottom:6}},q.label),
+            h("input",{value:answers[q.id]||"",onChange:function(e){var v=e.target.value;setAnswers(function(a){return Object.assign({},a,{[q.id]:v});});},placeholder:q.placeholder,style:{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"9px 12px",fontSize:13,color:C.dark,fontFamily:"inherit"}})
+          );
+        }),
+        h("div",{style:{display:"flex",gap:12,marginTop:8}},
+          h("button",{onClick:function(){setStep(0);},style:{background:C.offwhite,color:C.dark,border:"1px solid "+C.midGrey,borderRadius:6,padding:"11px 20px",fontSize:13,fontWeight:600,cursor:"pointer"}},"← Back"),
+          h("button",{onClick:generate,style:{flex:1,background:C.dark,color:C.white,border:"none",borderRadius:6,padding:"12px 28px",fontSize:14,fontWeight:700,cursor:"pointer"}},"Generate My AI Execution Plan →")
+        )
+      )
+    )
   );
 
-  if (step===2) return (
-    <div style={{background:C.offwhite,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:32}}>
-      <div style={{textAlign:"center",maxWidth:480}}>
-        <div style={{fontSize:52,marginBottom:20}}>⚡</div>
-        <h2 style={{fontSize:22,fontWeight:800,color:C.dark,marginBottom:8}}>Building your AI Execution Plan</h2>
-        <p style={{fontSize:16,color:C.dark,marginBottom:6,fontWeight:600}}>{loadingMsg}</p>
-        <p style={{fontSize:13,color:C.greigeDark,marginBottom:28}}>{loadingDetail}</p>
-        <div style={{background:C.midGrey,borderRadius:100,height:6,overflow:"hidden",marginBottom:16}}>
-          <div className="pulse" style={{background:C.blush,height:"100%",borderRadius:100}}/>
-        </div>
-        <p style={{fontSize:11,color:C.greigeDark}}>This takes 45–90 seconds — we're researching your market and crafting a tailored plan</p>
-      </div>
-    </div>
+  // STEP 2
+  if(step===2) return h("div",{style:{background:C.offwhite,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:32}},
+    h("div",{style:{textAlign:"center",maxWidth:480}},
+      h("div",{style:{fontSize:52,marginBottom:20}},"⚡"),
+      h("h2",{style:{fontSize:22,fontWeight:800,color:C.dark,marginBottom:8}},"Building your AI Execution Plan"),
+      h("p",{style:{fontSize:16,color:C.dark,marginBottom:6,fontWeight:600}},loadingMsg),
+      h("p",{style:{fontSize:13,color:C.greigeDark,marginBottom:28}},loadingDetail),
+      h("div",{style:{background:C.midGrey,borderRadius:100,height:6,overflow:"hidden",marginBottom:16}},
+        h("div",{className:"pulse",style:{background:C.blush,height:"100%",borderRadius:100}})
+      ),
+      h("p",{style:{fontSize:11,color:C.greigeDark}},"This takes 45–90 seconds — we're researching your market and crafting a tailored plan")
+    )
   );
 
-  if (step===3&&plan) {
-    function UCRow({uc,cat,idx}) {
-      return (
-        <div style={{borderBottom:"1px solid "+C.lightGrey,padding:"12px 0",display:"grid",gridTemplateColumns:"2fr 1.6fr 1.4fr 1.4fr 36px",gap:10,alignItems:"start"}}>
-          <Field value={uc.name} onChange={function(v){updUC(cat,idx,"name",v);}} placeholder="What AI does for the user..." multi style={{minHeight:64,fontSize:12}}/>
-          <div>
-            <Field value={uc.tool} onChange={function(v){updUC(cat,idx,"tool",v);}} placeholder="Tool / approach" multi style={{minHeight:64,fontSize:12}}/>
-            <div style={{display:"flex",gap:8,marginTop:6,flexWrap:"wrap"}}>
-              {["buy","configure","build"].map(function(o){return(
-                <label key={o} style={{fontSize:11,display:"flex",alignItems:"center",gap:3,cursor:"pointer"}}>
-                  <input type="checkbox" checked={uc[o]} onChange={function(e){updUC(cat,idx,o,e.target.checked);}} style={{accentColor:C.dark}}/>{o.charAt(0).toUpperCase()+o.slice(1)}
-                </label>
-              );})}
-            </div>
-          </div>
-          <div>
-            <Field value={uc.dataSource} onChange={function(v){updUC(cat,idx,"dataSource",v);}} placeholder="Data source" multi style={{minHeight:64,fontSize:12}}/>
-            <div style={{display:"flex",gap:4,marginTop:6,flexWrap:"wrap"}}>
-              {[["dataReady","Ready"],["dataNeeds","Needs work"],["dataGap","Gap"]].map(function(kl){return(
-                <label key={kl[0]} style={{fontSize:11,display:"flex",alignItems:"center",gap:3,cursor:"pointer"}}>
-                  <input type="checkbox" checked={uc[kl[0]]} onChange={function(e){updUC(cat,idx,kl[0],e.target.checked);}} style={{accentColor:C.dark}}/>{kl[1]}
-                </label>
-              );})}
-            </div>
-          </div>
-          <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-            {[["gdpr","GDPR"],["confidentiality","Conf."],["errors","Errors"],["security","Sec."]].map(function(kl){return(
-              <label key={kl[0]} style={{fontSize:11,display:"flex",alignItems:"center",gap:3,cursor:"pointer"}}>
-                <input type="checkbox" checked={uc[kl[0]]} onChange={function(e){updUC(cat,idx,kl[0],e.target.checked);}} style={{accentColor:C.dark}}/>{kl[1]}
-              </label>
-            );})}
-          </div>
-          <label style={{cursor:"pointer",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",paddingTop:16}}>
-            <input type="checkbox" checked={uc.top5} onChange={function(e){updUC(cat,idx,"top5",e.target.checked);}} style={{display:"none"}}/>
-            <span style={{color:uc.top5?"#e5a800":C.midGrey}}>★</span>
-          </label>
-        </div>
+  // STEP 3
+  if(step===3&&plan){
+    function UCRow(props){
+      var uc=props.uc,cat=props.cat,idx=props.idx;
+      return h("div",{style:{borderBottom:"1px solid "+C.lightGrey,padding:"12px 0",display:"grid",gridTemplateColumns:"2fr 1.6fr 1.4fr 1.4fr 36px",gap:10,alignItems:"start"}},
+        h(Field,{value:uc.name,onChange:function(v){updUC(cat,idx,"name",v);},placeholder:"What AI does for the user...",multi:true,minHeight:64,style:{fontSize:12}}),
+        h("div",null,
+          h(Field,{value:uc.tool,onChange:function(v){updUC(cat,idx,"tool",v);},placeholder:"Tool / approach",multi:true,minHeight:64,style:{fontSize:12}}),
+          h("div",{style:{display:"flex",gap:8,marginTop:6,flexWrap:"wrap"}},
+            ["buy","configure","build"].map(function(o){
+              return h("label",{key:o,style:{fontSize:11,display:"flex",alignItems:"center",gap:3,cursor:"pointer"}},
+                h("input",{type:"checkbox",checked:uc[o],onChange:function(e){updUC(cat,idx,o,e.target.checked);},style:{accentColor:C.dark}}),
+                o.charAt(0).toUpperCase()+o.slice(1)
+              );
+            })
+          )
+        ),
+        h("div",null,
+          h(Field,{value:uc.dataSource,onChange:function(v){updUC(cat,idx,"dataSource",v);},placeholder:"Data source",multi:true,minHeight:64,style:{fontSize:12}}),
+          h("div",{style:{display:"flex",gap:4,marginTop:6,flexWrap:"wrap"}},
+            [["dataReady","Ready"],["dataNeeds","Needs work"],["dataGap","Gap"]].map(function(kl){
+              return h("label",{key:kl[0],style:{fontSize:11,display:"flex",alignItems:"center",gap:3,cursor:"pointer"}},
+                h("input",{type:"checkbox",checked:uc[kl[0]],onChange:function(e){updUC(cat,idx,kl[0],e.target.checked);},style:{accentColor:C.dark}}),kl[1]);
+            })
+          )
+        ),
+        h("div",{style:{display:"flex",gap:4,flexWrap:"wrap"}},
+          [["gdpr","GDPR"],["confidentiality","Conf."],["errors","Errors"],["security","Sec."]].map(function(kl){
+            return h("label",{key:kl[0],style:{fontSize:11,display:"flex",alignItems:"center",gap:3,cursor:"pointer"}},
+              h("input",{type:"checkbox",checked:uc[kl[0]],onChange:function(e){updUC(cat,idx,kl[0],e.target.checked);},style:{accentColor:C.dark}}),kl[1]);
+          })
+        ),
+        h("label",{style:{cursor:"pointer",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",paddingTop:16}},
+          h("input",{type:"checkbox",checked:uc.top5,onChange:function(e){updUC(cat,idx,"top5",e.target.checked);},style:{display:"none"}}),
+          h("span",{style:{color:uc.top5?"#e5a800":C.midGrey}},"★")
+        )
       );
     }
 
-    return (
-      <div style={{background:C.offwhite,minHeight:"100vh"}}>
-        <div className="no-print" style={{background:C.dark,color:C.white,padding:"16px 32px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
-          <div>
-            <div style={{fontSize:11,color:C.greige,letterSpacing:"0.1em",textTransform:"uppercase"}}>aily.dk</div>
-            <h1 style={{fontSize:20,fontWeight:800,margin:"2px 0 0",color:C.white}}>AI Execution Plan</h1>
-            {company&&<div style={{fontSize:12,color:C.greige,marginTop:2}}>{company}{owner?" · "+owner:""} · {TODAY}</div>}
-          </div>
-          <div style={{display:"flex",gap:10}}>
-            <button onClick={function(){setStep(0);}} style={{background:"transparent",color:C.greige,border:"1px solid "+C.greige,borderRadius:5,padding:"7px 14px",fontSize:12,cursor:"pointer"}}>← Start over</button>
-            <button onClick={function(){window.print();}} style={{background:C.blush,color:C.dark,border:"none",borderRadius:5,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>🖨 Print / Save PDF</button>
-          </div>
-        </div>
-        <div className="no-print" style={{background:C.white,borderBottom:"1px solid "+C.midGrey,padding:"0 32px",display:"flex",position:"sticky",top:57,zIndex:99}}>
-          {[["plan","📋 AI Execution Plan"],["background","📚 Background Paper"]].map(function(il){return(
-            <button key={il[0]} onClick={function(){setActiveTab(il[0]);}} style={{background:"transparent",border:"none",borderBottom:activeTab===il[0]?"3px solid "+C.dark:"3px solid transparent",padding:"14px 20px",fontSize:13,fontWeight:activeTab===il[0]?700:400,color:activeTab===il[0]?C.dark:C.greigeDark,cursor:"pointer"}}>{il[1]}</button>
-          );})}
-        </div>
-        <div style={{maxWidth:1150,margin:"0 auto",padding:"28px 24px 80px"}}>
-          {activeTab==="plan"&&<div>
-            <div style={{background:C.white,borderRadius:8,marginBottom:24,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}}>
-              <SecHead title="AI Ambition" color={C.blush}/>
-              <div style={{padding:20}}>
-                <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.08em",display:"block",marginBottom:10}}>Our AI Ambition</label>
-                <textarea value={plan.ambition} onChange={function(e){setPlan(function(p){return Object.assign({},p,{ambition:e.target.value});});}}
-                  style={{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"12px 14px",fontSize:15,color:C.dark,fontFamily:"inherit",resize:"vertical",minHeight:80,fontStyle:"italic",lineHeight:1.6}}/>
-              </div>
-            </div>
-
-            <div style={{background:C.white,borderRadius:8,marginBottom:24,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:C.greige,padding:"10px 16px"}}>
-                <span style={{fontWeight:700,fontSize:12,letterSpacing:"0.08em",textTransform:"uppercase",color:C.white}}>AI Maturity Assessment</span>
-                <a href="https://www.aily.dk/aily-ai-pulse" target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:C.white,textDecoration:"none",background:"rgba(255,255,255,0.2)",padding:"4px 10px",borderRadius:12,fontWeight:600,whiteSpace:"nowrap"}}>Take the full AI Pulse →</a>
-              </div>
-              <div style={{padding:"12px 16px",background:C.lightGrey,borderBottom:"1px solid "+C.midGrey}}>
-                <p style={{fontSize:12,color:C.greigeDark,margin:0}}>High-level estimate based on your strategy. For a full validated assessment, <a href="https://www.aily.dk/aily-ai-pulse" target="_blank" rel="noopener noreferrer" style={{color:C.dark,fontWeight:600}}>take the AILY AI Pulse</a>.</p>
-              </div>
-              <div style={{padding:16,display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
-                {MAT_LABELS.map(function(kl){return(
-                  <div key={kl[0]} style={{background:C.lightGrey,borderRadius:6,padding:14}}>
-                    <div style={{fontSize:11,fontWeight:700,color:C.dark,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:10}}>{kl[1]}</div>
-                    <label style={{fontSize:11,color:C.greigeDark,display:"block",marginBottom:4}}>Score (1-5):</label>
-                    <input value={plan.maturity[kl[0]]?plan.maturity[kl[0]].score:""} onChange={function(e){setPlan(function(p){var m=Object.assign({},p.maturity);m[kl[0]]=Object.assign({},m[kl[0]],{score:e.target.value});return Object.assign({},p,{maturity:m});});}}
-                      style={{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"6px 8px",fontSize:14,fontWeight:700,marginBottom:10}}/>
-                    <label style={{fontSize:11,color:C.greigeDark,display:"block",marginBottom:4}}>Biggest gap:</label>
-                    <textarea value={plan.maturity[kl[0]]?plan.maturity[kl[0]].gap:""} onChange={function(e){setPlan(function(p){var m=Object.assign({},p.maturity);m[kl[0]]=Object.assign({},m[kl[0]],{gap:e.target.value});return Object.assign({},p,{maturity:m});});}}
-                      style={{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"6px 8px",fontSize:12,fontFamily:"inherit",resize:"vertical",minHeight:64,lineHeight:1.5}}/>
-                  </div>
-                );})}
-              </div>
-            </div>
-
-            <div style={{background:C.white,borderRadius:8,marginBottom:24,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}}>
-              <SecHead title="Use Cases · Technology · Data · Governance" color={C.greige}/>
-              <div style={{padding:"0 16px 16px"}}>
-                <div style={{display:"grid",gridTemplateColumns:"2fr 1.6fr 1.4fr 1.4fr 36px",gap:10,padding:"10px 0 8px",borderBottom:"2px solid "+C.midGrey}}>
-                  {["Use Case","Technology","Data","Governance","★"].map(function(h){return <div key={h} style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em"}}>{h}</div>;})}
-                </div>
-                {[["daily","Daily Productivity",C.lightGrey],["operational","Operational",C.offwhite],["strategic","Strategic",C.lightGrey]].map(function(cl){return(
-                  <div key={cl[0]} style={{background:cl[2],padding:"4px 0"}}>
-                    <div style={{padding:"8px 0 2px",fontSize:11,fontWeight:800,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.1em",borderTop:"1px solid "+C.midGrey,marginTop:4}}>{cl[1]}</div>
-                    {(plan.useCases[cl[0]]||[]).map(function(uc,idx){return <UCRow key={idx} uc={uc} cat={cl[0]} idx={idx}/>;})}</div>
-                );})}
-              </div>
-            </div>
-
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24,marginBottom:24}}>
-              <div style={{background:C.white,borderRadius:8,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}}>
-                <SecHead title="People, Training & Change Management" color={C.greige}/>
-                <div style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
-                  {[["who","Who changes — and how?","Which roles and how their daily work changes..."],["changeNarrative","Change narrative & resistance","What resistance to expect and how to address it..."],["communicationPlan","Communication plan","How leadership communicates the AI journey..."],["leadershipRole","Leadership role","What leaders must do differently..."],["quickWin","The quick win that builds momentum","One early win that creates confidence..."]].map(function(fl){return(
-                    <div key={fl[0]}>
-                      <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:6}}>{fl[1]}</label>
-                      <Field multi value={plan.people[fl[0]]||""} onChange={function(v){setPlan(function(p){return Object.assign({},p,{people:Object.assign({},p.people,{[fl[0]]:v})});});}} placeholder={fl[2]} style={{minHeight:64}}/>
-                    </div>
-                  );})}
-                  <div>
-                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:6}}>Training</label>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                      {[["intro","Intro"],["prompt","Prompt Skills"],["toolSpecific","Tool-specific"],["leadership","Leadership"]].map(function(kl){return <Check key={kl[0]} label={kl[1]} checked={plan.people.training[kl[0]]||false} onChange={function(v){setPlan(function(p){return Object.assign({},p,{people:Object.assign({},p.people,{training:Object.assign({},p.people.training,{[kl[0]]:v})})});}}}/>;})}</div>
-                  </div>
-                  <div>
-                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:6}}>Adoption approach</label>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                      {[["guidelines","Guidelines"],["champions","Champions"],["workshops","Workshops"],["support","Support Channel"]].map(function(kl){return <Check key={kl[0]} label={kl[1]} checked={plan.people.adoption[kl[0]]||false} onChange={function(v){setPlan(function(p){return Object.assign({},p,{people:Object.assign({},p.people,{adoption:Object.assign({},p.people.adoption,{[kl[0]]:v})})});}}}/>;})}</div>
-                  </div>
-                </div>
-              </div>
-              <div style={{background:C.white,borderRadius:8,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}}>
-                <SecHead title="How We Measure Success" color={C.greige}/>
-                <div style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
-                  <div>
-                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>After 90 days we've succeeded if:</label>
-                    <Field multi value={plan.success.after90||""} onChange={function(v){setPlan(function(p){return Object.assign({},p,{success:Object.assign({},p.success,{after90:v})});});}} style={{minHeight:80}}/>
-                  </div>
-                  <div>
-                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Key Metrics</label>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                      {[["time","Time saved"],["quality","Quality"],["adoption","Adoption"],["revenue","Revenue"],["risk","Risk"]].map(function(kl){return <Check key={kl[0]} label={kl[1]} checked={plan.success.metrics[kl[0]]||false} onChange={function(v){setPlan(function(p){return Object.assign({},p,{success:Object.assign({},p.success,{metrics:Object.assign({},p.success.metrics,{[kl[0]]:v})})});}}}/>;})}</div>
-                  </div>
-                  <div>
-                    <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Baseline / Starting point</label>
-                    <Field multi value={plan.success.baseline||""} onChange={function(v){setPlan(function(p){return Object.assign({},p,{success:Object.assign({},p.success,{baseline:v})});});}} style={{minHeight:64}}/>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div style={{background:C.white,borderRadius:8,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)",marginBottom:24}}>
-              <SecHead title="Action Plan · 30 / 90 / 180 Days" color={C.dark}/>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)"}}>
-                {[["days30","30 Days — Quick wins",C.blush],["days90","90 Days — First use cases live",C.greige],["days180","180 Days — Scale & learn",C.dark]].map(function(pl){return(
-                  <div key={pl[0]} style={{borderRight:"1px solid "+C.midGrey}}>
-                    <div style={{background:pl[2],color:pl[2]===C.dark?C.white:C.dark,padding:"10px 16px",fontSize:12,fontWeight:700}}>{pl[1]}</div>
-                    <div style={{padding:"14px 16px"}}>
-                      {(plan.actions[pl[0]]||[]).map(function(a,idx){return(
-                        <div key={idx} style={{marginBottom:16,paddingBottom:16,borderBottom:idx<2?"1px solid "+C.lightGrey:"none"}}>
-                          <div style={{fontSize:11,fontWeight:700,color:C.greigeDark,marginBottom:6}}>{idx+1}.</div>
-                          <Field multi value={a.action} onChange={function(v){updAct(pl[0],idx,"action",v);}} placeholder="Describe the implementation step..." style={{minHeight:72,fontSize:12}}/>
-                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:6}}>
-                            <Field value={a.owner} onChange={function(v){updAct(pl[0],idx,"owner",v);}} placeholder="Owner" style={{fontSize:12}}/>
-                            <Field value={a.deadline} onChange={function(v){updAct(pl[0],idx,"deadline",v);}} placeholder={"DD.MM."+YEAR} style={{fontSize:12}}/>
-                          </div>
-                        </div>
-                      );})}
-                    </div>
-                  </div>
-                );})}
-              </div>
-            </div>
-
-            <div style={{textAlign:"center",padding:"16px 0",borderTop:"1px solid "+C.midGrey,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-              <div style={{width:22,height:22,background:C.dark,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                <span style={{color:C.white,fontSize:10,fontWeight:800}}>A</span>
-              </div>
-              <span style={{fontSize:12,color:C.greigeDark,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>AILY · aily.dk</span>
-            </div>
-          </div>}
-
-          {activeTab==="background"&&(
-            <div style={{background:C.white,borderRadius:8,padding:36,boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24,borderBottom:"2px solid "+C.blush,paddingBottom:20}}>
-                <div>
-                  <h2 style={{fontSize:20,fontWeight:800,color:C.dark,margin:0}}>Background Intelligence Paper</h2>
-                  <p style={{fontSize:13,color:C.greigeDark,margin:"6px 0 0"}}>Market research and strategic context for your AI Execution Plan</p>
-                  {company&&<p style={{fontSize:12,color:C.greige,margin:"4px 0 0",fontWeight:600}}>{company} · {TODAY}</p>}
-                </div>
-                <button className="no-print" onClick={function(){window.print();}} style={{background:C.dark,color:C.white,border:"none",borderRadius:5,padding:"9px 18px",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>🖨 Print</button>
-              </div>
-              <div style={{fontSize:14,lineHeight:1.9,color:C.dark}} dangerouslySetInnerHTML={{__html:mdToHtml(bg)}}/>
-              <div style={{marginTop:36,borderTop:"1px solid "+C.midGrey,paddingTop:20,display:"flex",alignItems:"center",gap:8}}>
-                <div style={{width:22,height:22,background:C.dark,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  <span style={{color:C.white,fontSize:10,fontWeight:800}}>A</span>
-                </div>
-                <span style={{fontSize:12,color:C.greigeDark,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>AILY · aily.dk</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+    return h("div",{style:{background:C.offwhite,minHeight:"100vh"}},
+      // Header
+      h("div",{className:"no-print",style:{background:C.dark,color:C.white,padding:"16px 32px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}},
+        h("div",null,
+          h("div",{style:{fontSize:11,color:C.greige,letterSpacing:"0.1em",textTransform:"uppercase"}},"aily.dk"),
+          h("h1",{style:{fontSize:20,fontWeight:800,margin:"2px 0 0",color:C.white}},"AI Execution Plan"),
+          company?h("div",{style:{fontSize:12,color:C.greige,marginTop:2}},company+(owner?" · "+owner:"")+" · "+TODAY):null
+        ),
+        h("div",{style:{display:"flex",gap:10}},
+          h("button",{onClick:function(){setStep(0);},style:{background:"transparent",color:C.greige,border:"1px solid "+C.greige,borderRadius:5,padding:"7px 14px",fontSize:12,cursor:"pointer"}},"← Start over"),
+          h("button",{onClick:function(){window.print();},style:{background:C.blush,color:C.dark,border:"none",borderRadius:5,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}},"🖨 Print / Save PDF")
+        )
+      ),
+      // Tabs
+      h("div",{className:"no-print",style:{background:C.white,borderBottom:"1px solid "+C.midGrey,padding:"0 32px",display:"flex",position:"sticky",top:57,zIndex:99}},
+        [["plan","📋 AI Execution Plan"],["background","📚 Background Paper"]].map(function(il){
+          return h("button",{key:il[0],onClick:function(){setActiveTab(il[0]);},style:{background:"transparent",border:"none",borderBottom:activeTab===il[0]?"3px solid "+C.dark:"3px solid transparent",padding:"14px 20px",fontSize:13,fontWeight:activeTab===il[0]?700:400,color:activeTab===il[0]?C.dark:C.greigeDark,cursor:"pointer"}},il[1]);
+        })
+      ),
+      h("div",{style:{maxWidth:1150,margin:"0 auto",padding:"28px 24px 80px"}},
+        activeTab==="plan"?h("div",null,
+          // Ambition
+          h("div",{style:{background:C.white,borderRadius:8,marginBottom:24,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}},
+            h(SecHead,{title:"AI Ambition",color:C.blush}),
+            h("div",{style:{padding:20}},
+              h("label",{style:{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.08em",display:"block",marginBottom:10}},"Our AI Ambition"),
+              h("textarea",{value:plan.ambition,onChange:function(e){setPlan(function(p){return Object.assign({},p,{ambition:e.target.value});});},style:{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"12px 14px",fontSize:15,color:C.dark,fontFamily:"inherit",resize:"vertical",minHeight:80,fontStyle:"italic",lineHeight:1.6}})
+            )
+          ),
+          // Maturity
+          h("div",{style:{background:C.white,borderRadius:8,marginBottom:24,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}},
+            h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:C.greige,padding:"10px 16px"}},
+              h("span",{style:{fontWeight:700,fontSize:12,letterSpacing:"0.08em",textTransform:"uppercase",color:C.white}},"AI Maturity Assessment"),
+              h("a",{href:"https://www.aily.dk/aily-ai-pulse",target:"_blank",rel:"noopener noreferrer",style:{fontSize:11,color:C.white,textDecoration:"none",background:"rgba(255,255,255,0.2)",padding:"4px 10px",borderRadius:12,fontWeight:600,whiteSpace:"nowrap"}},"Take the full AI Pulse →")
+            ),
+            h("div",{style:{padding:"12px 16px",background:C.lightGrey,borderBottom:"1px solid "+C.midGrey}},
+              h("p",{style:{fontSize:12,color:C.greigeDark,margin:0}},
+                "High-level estimate based on your strategy. For a full validated assessment, ",
+                h("a",{href:"https://www.aily.dk/aily-ai-pulse",target:"_blank",rel:"noopener noreferrer",style:{color:C.dark,fontWeight:600}},"take the AILY AI Pulse"),
+                "."
+              )
+            ),
+            h("div",{style:{padding:16,display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}},
+              MAT_LABELS.map(function(kl){
+                var mk=plan.maturity[kl[0]]||{score:"",gap:""};
+                return h("div",{key:kl[0],style:{background:C.lightGrey,borderRadius:6,padding:14}},
+                  h("div",{style:{fontSize:11,fontWeight:700,color:C.dark,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:10}},kl[1]),
+                  h("label",{style:{fontSize:11,color:C.greigeDark,display:"block",marginBottom:4}},"Score (1-5):"),
+                  h("input",{value:mk.score,onChange:function(e){var v=e.target.value;setPlan(function(p){var m=Object.assign({},p.maturity);m[kl[0]]=Object.assign({},m[kl[0]],{score:v});return Object.assign({},p,{maturity:m});});},style:{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"6px 8px",fontSize:14,fontWeight:700,marginBottom:10}}),
+                  h("label",{style:{fontSize:11,color:C.greigeDark,display:"block",marginBottom:4}},"Biggest gap:"),
+                  h("textarea",{value:mk.gap,onChange:function(e){var v=e.target.value;setPlan(function(p){var m=Object.assign({},p.maturity);m[kl[0]]=Object.assign({},m[kl[0]],{gap:v});return Object.assign({},p,{maturity:m});});},style:{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"6px 8px",fontSize:12,fontFamily:"inherit",resize:"vertical",minHeight:64,lineHeight:1.5}})
+                );
+              })
+            )
+          ),
+          // Use Cases
+          h("div",{style:{background:C.white,borderRadius:8,marginBottom:24,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}},
+            h(SecHead,{title:"Use Cases · Technology · Data · Governance",color:C.greige}),
+            h("div",{style:{padding:"0 16px 16px"}},
+              h("div",{style:{display:"grid",gridTemplateColumns:"2fr 1.6fr 1.4fr 1.4fr 36px",gap:10,padding:"10px 0 8px",borderBottom:"2px solid "+C.midGrey}},
+                ["Use Case","Technology","Data","Governance","★"].map(function(hd){return h("div",{key:hd,style:{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em"}},hd);})
+              ),
+              [["daily","Daily Productivity",C.lightGrey],["operational","Operational",C.offwhite],["strategic","Strategic",C.lightGrey]].map(function(cl){
+                return h("div",{key:cl[0],style:{background:cl[2],padding:"4px 0"}},
+                  h("div",{style:{padding:"8px 0 2px",fontSize:11,fontWeight:800,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.1em",borderTop:"1px solid "+C.midGrey,marginTop:4}},cl[1]),
+                  (plan.useCases[cl[0]]||[]).map(function(uc,idx){return h(UCRow,{key:idx,uc:uc,cat:cl[0],idx:idx});})
+                );
+              })
+            )
+          ),
+          // People & Success
+          h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24,marginBottom:24}},
+            h("div",{style:{background:C.white,borderRadius:8,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}},
+              h(SecHead,{title:"People, Training & Change Management",color:C.greige}),
+              h("div",{style:{padding:20,display:"flex",flexDirection:"column",gap:14}},
+                [["who","Who changes — and how?","Which roles and how their daily work changes..."],
+                 ["changeNarrative","Change narrative & resistance","What resistance to expect and how to address it..."],
+                 ["communicationPlan","Communication plan","How leadership communicates the AI journey..."],
+                 ["leadershipRole","Leadership role","What leaders must do differently..."],
+                 ["quickWin","The quick win that builds momentum","One early win that creates confidence..."]
+                ].map(function(fl){
+                  return h("div",{key:fl[0]},
+                    h("label",{style:{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:6}},fl[1]),
+                    h(Field,{multi:true,value:plan.people[fl[0]]||"",onChange:function(v){setPlan(function(p){return Object.assign({},p,{people:Object.assign({},p.people,{[fl[0]]:v})});});},placeholder:fl[2],minHeight:64})
+                  );
+                }),
+                h("div",null,
+                  h("label",{style:{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:6}},"Training"),
+                  h("div",{style:{display:"flex",flexWrap:"wrap",gap:4}},
+                    [["intro","Intro"],["prompt","Prompt Skills"],["toolSpecific","Tool-specific"],["leadership","Leadership"]].map(function(kl){
+                      return h(Check,{key:kl[0],label:kl[1],checked:plan.people.training[kl[0]]||false,onChange:function(v){setPlan(function(p){return Object.assign({},p,{people:Object.assign({},p.people,{training:Object.assign({},p.people.training,{[kl[0]]:v})})});});}});
+                    })
+                  )
+                ),
+                h("div",null,
+                  h("label",{style:{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:6}},"Adoption approach"),
+                  h("div",{style:{display:"flex",flexWrap:"wrap",gap:4}},
+                    [["guidelines","Guidelines"],["champions","Champions"],["workshops","Workshops"],["support","Support Channel"]].map(function(kl){
+                      return h(Check,{key:kl[0],label:kl[1],checked:plan.people.adoption[kl[0]]||false,onChange:function(v){setPlan(function(p){return Object.assign({},p,{people:Object.assign({},p.people,{adoption:Object.assign({},p.people.adoption,{[kl[0]]:v})})});});}});
+                    })
+                  )
+                )
+              )
+            ),
+            h("div",{style:{background:C.white,borderRadius:8,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}},
+              h(SecHead,{title:"How We Measure Success",color:C.greige}),
+              h("div",{style:{padding:20,display:"flex",flexDirection:"column",gap:14}},
+                h("div",null,
+                  h("label",{style:{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}},"After 90 days we've succeeded if:"),
+                  h(Field,{multi:true,value:plan.success.after90||"",onChange:function(v){setPlan(function(p){return Object.assign({},p,{success:Object.assign({},p.success,{after90:v})});});},minHeight:80})
+                ),
+                h("div",null,
+                  h("label",{style:{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}},"Key Metrics"),
+                  h("div",{style:{display:"flex",flexWrap:"wrap",gap:4}},
+                    [["time","Time saved"],["quality","Quality"],["adoption","Adoption"],["revenue","Revenue"],["risk","Risk"]].map(function(kl){
+                      return h(Check,{key:kl[0],label:kl[1],checked:plan.success.metrics[kl[0]]||false,onChange:function(v){setPlan(function(p){return Object.assign({},p,{success:Object.assign({},p.success,{metrics:Object.assign({},p.success.metrics,{[kl[0]]:v})})});});}});
+                    })
+                  )
+                ),
+                h("div",null,
+                  h("label",{style:{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}},"Baseline / Starting point"),
+                  h(Field,{multi:true,value:plan.success.baseline||"",onChange:function(v){setPlan(function(p){return Object.assign({},p,{success:Object.assign({},p.success,{baseline:v})});});},minHeight:64})
+                )
+              )
+            )
+          ),
+          // Action Plan
+          h("div",{style:{background:C.white,borderRadius:8,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)",marginBottom:24}},
+            h(SecHead,{title:"Action Plan · 30 / 90 / 180 Days",color:C.dark}),
+            h("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)"}},
+              [["days30","30 Days — Quick wins",C.blush],["days90","90 Days — First use cases live",C.greige],["days180","180 Days — Scale & learn",C.dark]].map(function(pl){
+                return h("div",{key:pl[0],style:{borderRight:"1px solid "+C.midGrey}},
+                  h("div",{style:{background:pl[2],color:pl[2]===C.dark?C.white:C.dark,padding:"10px 16px",fontSize:12,fontWeight:700}},pl[1]),
+                  h("div",{style:{padding:"14px 16px"}},
+                    (plan.actions[pl[0]]||[]).map(function(a,idx){
+                      return h("div",{key:idx,style:{marginBottom:16,paddingBottom:16,borderBottom:idx<2?"1px solid "+C.lightGrey:"none"}},
+                        h("div",{style:{fontSize:11,fontWeight:700,color:C.greigeDark,marginBottom:6}},String(idx+1)+"."),
+                        h(Field,{multi:true,value:a.action,onChange:function(v){updAct(pl[0],idx,"action",v);},placeholder:"Describe the implementation step...",minHeight:72,style:{fontSize:12}}),
+                        h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:6}},
+                          h(Field,{value:a.owner,onChange:function(v){updAct(pl[0],idx,"owner",v);},placeholder:"Owner",style:{fontSize:12}}),
+                          h(Field,{value:a.deadline,onChange:function(v){updAct(pl[0],idx,"deadline",v);},placeholder:"DD.MM."+YEAR,style:{fontSize:12}})
+                        )
+                      );
+                    })
+                  )
+                );
+              })
+            )
+          ),
+          // Footer
+          h("div",{style:{textAlign:"center",padding:"16px 0",borderTop:"1px solid "+C.midGrey,display:"flex",alignItems:"center",justifyContent:"center",gap:8}},
+            h("div",{style:{width:22,height:22,background:C.dark,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center"}},
+              h("span",{style:{color:C.white,fontSize:10,fontWeight:800}},"A")
+            ),
+            h("span",{style:{fontSize:12,color:C.greigeDark,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}},"AILY · aily.dk")
+          )
+        ):null,
+        activeTab==="background"?h("div",{style:{background:C.white,borderRadius:8,padding:36,boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}},
+          h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24,borderBottom:"2px solid "+C.blush,paddingBottom:20}},
+            h("div",null,
+              h("h2",{style:{fontSize:20,fontWeight:800,color:C.dark,margin:0}},"Background Intelligence Paper"),
+              h("p",{style:{fontSize:13,color:C.greigeDark,margin:"6px 0 0"}},"Market research and strategic context for your AI Execution Plan"),
+              company?h("p",{style:{fontSize:12,color:C.greige,margin:"4px 0 0",fontWeight:600}},company+" · "+TODAY):null
+            ),
+            h("button",{className:"no-print",onClick:function(){window.print();},style:{background:C.dark,color:C.white,border:"none",borderRadius:5,padding:"9px 18px",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}},"🖨 Print")
+          ),
+          h("div",{style:{fontSize:14,lineHeight:1.9,color:C.dark},dangerouslySetInnerHTML:{__html:mdToHtml(bg)}}),
+          h("div",{style:{marginTop:36,borderTop:"1px solid "+C.midGrey,paddingTop:20,display:"flex",alignItems:"center",gap:8}},
+            h("div",{style:{width:22,height:22,background:C.dark,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center"}},
+              h("span",{style:{color:C.white,fontSize:10,fontWeight:800}},"A")
+            ),
+            h("span",{style:{fontSize:12,color:C.greigeDark,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}},"AILY · aily.dk")
+          )
+        ):null
+      )
     );
   }
   return null;
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App,null));
 </script>
 </body>
 </html>
