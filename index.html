@@ -9,99 +9,81 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', sans-serif; background: #FAF8F6; }
-  textarea, input { font-family: 'Segoe UI', sans-serif; }
-  @keyframes pulse { 0%{width:20%} 50%{width:80%} 100%{width:20%} }
-  .pulse { animation: pulse 1.8s ease-in-out infinite; }
-  @media print {
-    .no-print { display: none !important; }
-    body { background: white; }
-  }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: #FAF8F6; }
+textarea, input { font-family: 'Segoe UI', sans-serif; }
+@keyframes pulse { 0%{width:20%} 50%{width:80%} 100%{width:20%} }
+.pulse { animation: pulse 1.8s ease-in-out infinite; }
+@media print { .no-print { display: none !important; } body { background: white; } }
 </style>
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel">
+<script type="text/babel" data-presets="env,react">
 const { useState, useRef } = React;
-
 const C = {
-  dark: "#2C2420", blush: "#F4B4B2", blushDark: "#e89a98",
-  greige: "#B0A496", greigeDark: "#8a7e72", offwhite: "#FAF8F6",
-  white: "#ffffff", lightGrey: "#f0ede9", midGrey: "#d4cfc9",
+  dark:"#2C2420",blush:"#F4B4B2",blushDark:"#e89a98",
+  greige:"#B0A496",greigeDark:"#8a7e72",offwhite:"#FAF8F6",
+  white:"#ffffff",lightGrey:"#f0ede9",midGrey:"#d4cfc9"
 };
-
 const PROXY = "https://aily-api-proxy.katjaandersen74.workers.dev";
 const TODAY = new Date().toLocaleDateString("en-GB");
 const YEAR = new Date().getFullYear();
 
 const QUESTIONS = [
-  { id: "industry", label: "What industry are you in?", placeholder: "e.g. Law firm, Manufacturing, Finance, Retail..." },
-  { id: "aiMaturity", label: "How would you describe your current AI maturity?", placeholder: "e.g. No AI today / Experimenting with ChatGPT / Some tools in production..." },
-  { id: "biggestChallenge", label: "What is your single biggest challenge or opportunity right now?", placeholder: "e.g. Too much manual work, losing clients to competitors, scaling operations..." },
+  {id:"industry",label:"What industry are you in?",placeholder:"e.g. Law firm, Manufacturing, Finance, Retail..."},
+  {id:"aiMaturity",label:"How would you describe your current AI maturity?",placeholder:"e.g. No AI today / Experimenting with ChatGPT / Some tools in production..."},
+  {id:"biggestChallenge",label:"What is your single biggest challenge or opportunity right now?",placeholder:"e.g. Too much manual work, losing clients to competitors, scaling operations..."}
 ];
-
-const STEPS = ["Upload Strategy", "Quick Questions", "Generating Plan", "Your Plan"];
-
+const STEPS = ["Upload Strategy","Quick Questions","Generating Plan","Your Plan"];
 const MAT_LABELS = [
-  ["direction", "Direction & Strategy"],
-  ["knowledge", "Knowledge & Training"],
-  ["data", "Data"],
-  ["technology", "Technology & Systems"],
-  ["governance", "Governance & Responsibility"],
-  ["results", "Results & Progress"],
+  ["direction","Direction & Strategy"],["knowledge","Knowledge & Training"],
+  ["data","Data"],["technology","Technology & Systems"],
+  ["governance","Governance & Responsibility"],["results","Results & Progress"]
 ];
-
+const emptyUC = () => ({name:"",tool:"",buy:false,configure:false,build:false,dataSource:"",dataReady:false,dataNeeds:false,dataGap:false,gdpr:false,confidentiality:false,errors:false,security:false,top5:false});
+const emptyAct = () => ({action:"",owner:"",deadline:""});
 const defaultPlan = {
-  ambition: "",
-  maturity: {
-    direction: { score: "", gap: "" }, knowledge: { score: "", gap: "" },
-    data: { score: "", gap: "" }, technology: { score: "", gap: "" },
-    governance: { score: "", gap: "" }, results: { score: "", gap: "" },
-  },
-  useCases: {
-    daily: Array(3).fill(null).map(() => ({name:"",tool:"",buy:false,configure:false,build:false,dataSource:"",dataReady:false,dataNeeds:false,dataGap:false,gdpr:false,confidentiality:false,errors:false,security:false,top5:false})),
-    operational: Array(3).fill(null).map(() => ({name:"",tool:"",buy:false,configure:false,build:false,dataSource:"",dataReady:false,dataNeeds:false,dataGap:false,gdpr:false,confidentiality:false,errors:false,security:false,top5:false})),
-    strategic: Array(3).fill(null).map(() => ({name:"",tool:"",buy:false,configure:false,build:false,dataSource:"",dataReady:false,dataNeeds:false,dataGap:false,gdpr:false,confidentiality:false,errors:false,security:false,top5:false})),
-  },
-  people: {who:"",changeNarrative:"",communicationPlan:"",leadershipRole:"",quickWin:"",training:{intro:false,prompt:false,toolSpecific:false,leadership:false},adoption:{guidelines:false,champions:false,workshops:false,support:false}},
-  success: {after90:"",metrics:{time:false,quality:false,adoption:false,revenue:false,risk:false},baseline:""},
-  actions: {
-    days30: Array(3).fill(null).map(()=>({action:"",owner:"",deadline:""})),
-    days90: Array(3).fill(null).map(()=>({action:"",owner:"",deadline:""})),
-    days180: Array(3).fill(null).map(()=>({action:"",owner:"",deadline:""})),
-  }
+  ambition:"",
+  maturity:{direction:{score:"",gap:""},knowledge:{score:"",gap:""},data:{score:"",gap:""},technology:{score:"",gap:""},governance:{score:"",gap:""},results:{score:"",gap:""}},
+  useCases:{daily:[emptyUC(),emptyUC(),emptyUC()],operational:[emptyUC(),emptyUC(),emptyUC()],strategic:[emptyUC(),emptyUC(),emptyUC()]},
+  people:{who:"",changeNarrative:"",communicationPlan:"",leadershipRole:"",quickWin:"",training:{intro:false,prompt:false,toolSpecific:false,leadership:false},adoption:{guidelines:false,champions:false,workshops:false,support:false}},
+  success:{after90:"",metrics:{time:false,quality:false,adoption:false,revenue:false,risk:false},baseline:""},
+  actions:{days30:[emptyAct(),emptyAct(),emptyAct()],days90:[emptyAct(),emptyAct(),emptyAct()],days180:[emptyAct(),emptyAct(),emptyAct()]}
 };
+
+function sleep(ms) { return new Promise(function(r){setTimeout(r,ms);}); }
 
 function Stepper({step}) {
   return (
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:0,marginBottom:32}}>
-      {STEPS.map((label,i) => (
-        <div key={i} style={{display:"flex",alignItems:"center"}}>
-          <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-            <div style={{width:32,height:32,borderRadius:"50%",background:i<step?C.greige:i===step?C.dark:C.midGrey,color:i<=step?C.white:C.greigeDark,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13}}>
-              {i<step?"✓":i+1}
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",marginBottom:32}}>
+      {STEPS.map(function(label,i) {
+        return (
+          <div key={i} style={{display:"flex",alignItems:"center"}}>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+              <div style={{width:32,height:32,borderRadius:"50%",background:i<step?C.greige:i===step?C.dark:C.midGrey,color:i<=step?C.white:C.greigeDark,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13}}>
+                {i<step?"✓":i+1}
+              </div>
+              <span style={{fontSize:11,color:i===step?C.dark:C.greigeDark,fontWeight:i===step?700:400,whiteSpace:"nowrap"}}>{label}</span>
             </div>
-            <span style={{fontSize:11,color:i===step?C.dark:C.greigeDark,fontWeight:i===step?700:400,whiteSpace:"nowrap"}}>{label}</span>
+            {i<STEPS.length-1 && <div style={{width:48,height:2,background:i<step?C.greige:C.midGrey,margin:"0 4px",marginBottom:20}}/>}
           </div>
-          {i<STEPS.length-1&&<div style={{width:48,height:2,background:i<step?C.greige:C.midGrey,margin:"0 4px",marginBottom:20}}/>}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-function Field({value,onChange,multi,placeholder,style={}}) {
-  const base = {width:"100%",border:`1px solid ${C.midGrey}`,borderRadius:4,padding:"8px 10px",fontSize:13,color:C.dark,background:C.white,fontFamily:"inherit",resize:multi?"vertical":"none",...style};
-  return multi
-    ? <textarea value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{...base,minHeight:72}}/>
-    : <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{...base,height:36}}/>;
+function Field({value,onChange,multi,placeholder,style}) {
+  var s = Object.assign({width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"8px 10px",fontSize:13,color:C.dark,background:C.white,fontFamily:"inherit",resize:multi?"vertical":"none"},style||{});
+  if (multi) return <textarea value={value} onChange={function(e){onChange(e.target.value);}} placeholder={placeholder} style={Object.assign({},s,{minHeight:72})}/>;
+  return <input value={value} onChange={function(e){onChange(e.target.value);}} placeholder={placeholder} style={Object.assign({},s,{height:36})}/>;
 }
 
 function Check({label,checked,onChange}) {
   return (
     <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.dark,cursor:"pointer",marginRight:8,marginBottom:4}}>
-      <input type="checkbox" checked={checked} onChange={e=>onChange(e.target.checked)} style={{accentColor:C.dark,width:14,height:14}}/>
+      <input type="checkbox" checked={checked} onChange={function(e){onChange(e.target.checked);}} style={{accentColor:C.dark,width:14,height:14}}/>
       {label}
     </label>
   );
@@ -112,314 +94,181 @@ function SecHead({title,color}) {
 }
 
 function App() {
-  const [step, setStep] = useState(0);
-  const [strategyText, setStrategyText] = useState("");
-  const [fileName, setFileName] = useState("");
-  const [answers, setAnswers] = useState({});
-  const [companyUrl, setCompanyUrl] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [loadingMsg, setLoadingMsg] = useState("");
-  const [loadingDetail, setLoadingDetail] = useState("");
-  const [plan, setPlan] = useState(null);
-  const [bg, setBg] = useState("");
-  const [activeTab, setActiveTab] = useState("plan");
-  const [company, setCompany] = useState("");
-  const [owner, setOwner] = useState("");
-  const [consented, setConsented] = useState(false);
-  const [error, setError] = useState("");
-  const fileRef = useRef();
+  var s = useState(0); var step=s[0],setStep=s[1];
+  var s2 = useState(""); var strategyText=s2[0],setStrategyText=s2[1];
+  var s3 = useState(""); var fileName=s3[0],setFileName=s3[1];
+  var s4 = useState({}); var answers=s4[0],setAnswers=s4[1];
+  var s5 = useState(""); var companyUrl=s5[0],setCompanyUrl=s5[1];
+  var s6 = useState(false); var loading=s6[0],setLoading=s6[1];
+  var s7 = useState(""); var loadingMsg=s7[0],setLoadingMsg=s7[1];
+  var s8 = useState(""); var loadingDetail=s8[0],setLoadingDetail=s8[1];
+  var s9 = useState(null); var plan=s9[0],setPlan=s9[1];
+  var s10 = useState(""); var bg=s10[0],setBg=s10[1];
+  var s11 = useState("plan"); var activeTab=s11[0],setActiveTab=s11[1];
+  var s12 = useState(""); var company=s12[0],setCompany=s12[1];
+  var s13 = useState(""); var owner=s13[0],setOwner=s13[1];
+  var s14 = useState(false); var consented=s14[0],setConsented=s14[1];
+  var s15 = useState(""); var error=s15[0],setError=s15[1];
+  var fileRef = useRef();
 
-  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
-  const callProxy = async (body, retries = 2) => {
-    let res;
-    try {
-      res = await fetch(PROXY, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-    } catch(e) { throw new Error("Network error — cannot reach Worker: "+e.message); }
-    if (res.status === 429) {
-        const t = await res.text().catch(()=>"");
-        let msg = "Too many requests — please try again in an hour.";
-        try { const j = JSON.parse(t); if (j.error?.message) msg = j.error.message; } catch {}
-        if (retries > 0 && msg.includes("rate limit of 30,000")) {
-          await sleep(15000);
-          return callProxy(body, retries - 1);
+  function callProxy(body) {
+    return fetch(PROXY,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})
+      .then(function(res) {
+        if (!res.ok) {
+          return res.text().then(function(t) {
+            var msg = "Worker error "+res.status+": "+t;
+            if (res.status===429) {
+              try { var j=JSON.parse(t); if(j.error&&j.error.message) msg=j.error.message; } catch(e){}
+            }
+            throw new Error(msg);
+          });
         }
-        throw new Error(msg);
-      }
-      throw new Error(`Worker error ${res.status}: ${await res.text().catch(()=>"")}`);
-    }
-    const json = await res.json().catch(()=>{throw new Error("Invalid JSON from Worker");});
-    if (json.error) throw new Error("Anthropic error: "+JSON.stringify(json.error));
-    return json;
-  };
-
-  const fetchCompanyContext = async (url) => {
-    if (!url) return "";
-    try {
-      const data = await callProxy({
-        model:"claude-sonnet-4-5", max_tokens:800,
-        tools:[{type:"web_search_20250305",name:"web_search"}],
-        messages:[{role:"user",content:`Search for information about this company: ${url}\n\nFind: what they do, their industry, their size, key products/services, any recent news or AI initiatives. Return a concise 200-word summary.`}]
+        return res.json().then(function(json) {
+          if (json.error) throw new Error("Anthropic error: "+JSON.stringify(json.error));
+          return json;
+        });
+      })
+      .catch(function(e) {
+        if (e.message && e.message.indexOf("fetch")>-1) throw new Error("Network error — cannot reach Worker: "+e.message);
+        throw e;
       });
-      return data.content?.filter(b=>b.type==="text").map(b=>b.text||"").join("\n")||"";
-    } catch { return ""; }
-  };
+  }
 
-  const extractPptx = async (file) => {
-    const zip = await JSZip.loadAsync(file);
-    const slides = Object.keys(zip.files).filter(n=>n.match(/ppt\/slides\/slide[0-9]+\.xml$/)).sort();
-    let text = "";
-    for (const s of slides) {
-      const xml = await zip.files[s].async("string");
-      const matches = [...xml.matchAll(/<a:t[^>]*>(.*?)<\/a:t>/g)];
-      const t = matches.map(m=>m[1]).join(" ").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">");
-      if (t.trim()) text += t.trim()+"\n";
-    }
-    return text.trim();
-  };
+  function extractPptx(file) {
+    return JSZip.loadAsync(file).then(function(zip) {
+      var slides = Object.keys(zip.files).filter(function(n){return n.match(/ppt\/slides\/slide[0-9]+\.xml$/);}).sort();
+      var promises = slides.map(function(s) {
+        return zip.files[s].async("string").then(function(xml) {
+          var matches = Array.from(xml.matchAll(/<a:t[^>]*>(.*?)<\/a:t>/g));
+          return matches.map(function(m){return m[1];}).join(" ").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">");
+        });
+      });
+      return Promise.all(promises).then(function(texts){return texts.filter(function(t){return t.trim();}).join("\n");});
+    });
+  }
 
-  const handleFile = async (e) => {
-    const file = e.target.files[0];
+  function handleFile(e) {
+    var file = e.target.files[0];
     if (!file) return;
     setFileName(file.name);
     setLoading(true);
     setLoadingMsg("Reading your document...");
-    const isPptx = file.name.toLowerCase().endsWith(".pptx");
-    try {
-      if (isPptx) {
-        const raw = await extractPptx(file);
-        const data = await callProxy({
-          model:"claude-sonnet-4-5", max_tokens:1500,
-          messages:[{role:"user",content:`Extract and summarise the key strategic priorities, goals, challenges, market context and ambitions from this presentation. Be thorough. Max 600 words.\n\nCONTENT:\n${raw.slice(0,8000)}`}]
-        });
-        setStrategyText(data.content?.map(b=>b.text||"").join("\n")||"");
-      } else {
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-          const b64 = ev.target.result.split(",")[1];
-          try {
-            const data = await callProxy({
-              model:"claude-sonnet-4-5", max_tokens:1500,
-              messages:[{role:"user",content:[
-                {type:"document",source:{type:"base64",media_type:"application/pdf",data:b64}},
-                {type:"text",text:"Extract and summarise the key strategic priorities, goals, challenges, market context and ambitions. Be thorough. Max 600 words."}
-              ]}]
-            });
-            setStrategyText(data.content?.map(b=>b.text||"").join("\n")||"");
-          } catch { setStrategyText("Could not extract automatically. Please describe your strategy below."); }
+    var isPptx = file.name.toLowerCase().endsWith(".pptx");
+    if (isPptx) {
+      extractPptx(file).then(function(raw) {
+        return callProxy({model:"claude-sonnet-4-5",max_tokens:1500,messages:[{role:"user",content:"Summarise the key strategic priorities, goals, challenges from this presentation in max 600 words:\n\n"+raw.slice(0,8000)}]});
+      }).then(function(data) {
+        var txt = data.content.filter(function(b){return b.type==="text";}).map(function(b){return b.text||"";}).join("\n");
+        setStrategyText(txt);
+        setLoading(false);
+      }).catch(function() {
+        setStrategyText("Could not extract automatically. Please describe your strategy below.");
+        setLoading(false);
+      });
+    } else {
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var b64 = ev.target.result.split(",")[1];
+        callProxy({model:"claude-sonnet-4-5",max_tokens:1500,messages:[{role:"user",content:[
+          {type:"document",source:{type:"base64",media_type:"application/pdf",data:b64}},
+          {type:"text",text:"Summarise the key strategic priorities, goals, challenges from this document in max 600 words."}
+        ]}]}).then(function(data) {
+          var txt = data.content.filter(function(b){return b.type==="text";}).map(function(b){return b.text||"";}).join("\n");
+          setStrategyText(txt);
           setLoading(false);
-        };
-        reader.readAsDataURL(file);
-        return;
-      }
-    } catch { setStrategyText("Could not extract automatically. Please describe your strategy below."); }
-    setLoading(false);
-  };
-
-  const generate = async () => {
-    setStep(2); setLoading(true); setError("");
-
-    const stages = [
-      ["🔍 Reading your strategy...", "Extracting priorities and context"],
-      ["🌍 Researching your industry...", "Fetching market intelligence and competitor moves"],
-      ["🏢 Looking up your company...", "Finding additional context from your website"],
-      ["💡 Identifying AI opportunities...", "Matching use cases to your specific situation"],
-      ["🗺️ Building your action plan...", "Sequencing 30/90/180 day priorities"],
-      ["📚 Writing background intelligence...", "Compiling market research and inspiration"],
-    ];
-    let si = 0;
-    setLoadingMsg(stages[0][0]); setLoadingDetail(stages[0][1]);
-    const iv = setInterval(()=>{ si=(si+1)%stages.length; setLoadingMsg(stages[si][0]); setLoadingDetail(stages[si][1]); },4500);
-
-    // Fetch company website context
-    let companyContext = "";
-    if (companyUrl) {
-      companyContext = await fetchCompanyContext(companyUrl);
+        }).catch(function() {
+          setStrategyText("Could not extract automatically. Please describe your strategy below.");
+          setLoading(false);
+        });
+      };
+      reader.readAsDataURL(file);
     }
-
-    const ctx = `
-COMPANY: ${company||"Not specified"}
-WEBSITE: ${companyUrl||"Not provided"}
-COMPANY CONTEXT FROM WEBSITE: ${companyContext||"Not available"}
-
-STRATEGY DOCUMENT SUMMARY:
-${strategyText}
-
-ADDITIONAL CONTEXT:
-- Industry: ${answers.industry||"Infer from strategy"}
-- Current AI maturity: ${answers.aiMaturity||"Not specified"}
-- Biggest challenge/opportunity: ${answers.biggestChallenge||"Not specified"}
-- Today's date: ${TODAY} (Year: ${YEAR})
-`.trim();
-
-    const planSystemPrompt = `You are a world-class AI strategy consultant with deep expertise across industries. You have access to web search to research the company's industry, competitors, and AI trends before generating the plan.
-
-LANGUAGE: Write ALL content in English. Do not use Danish or any other language.
-
-RESEARCH FIRST: Before generating the plan, use web search to:
-1. Find the latest AI trends and tools being adopted in this specific industry
-2. Find what competitors are doing with AI in this space
-3. Identify the most impactful AI use cases proven in this industry
-
-USE CASE RULES — CRITICAL:
-- A use case describes WHAT AI DOES for the user — it is a capability, not a project task
-- CORRECT: "AI-assisted summarisation of customer emails before response"
-- WRONG: "Implement email AI system" — that is a project action, not a use case
-- CORRECT: "Automatic generation of first draft proposals from tender documents using Claude"
-- WRONG: "Build proposal generation pipeline"
-- Daily = AI in everyday individual work (writing, summarising, researching, communicating)
-- Operational = AI automating business processes (reporting, compliance, quality control, service)
-- Strategic = AI creating competitive advantage (prediction, personalisation, market intelligence)
-- The action plan must contain DIFFERENT content — actions are STEPS TO IMPLEMENT use cases, not restatements
-
-QUALITY BAR:
-- Every use case must be specific to THIS company and industry — no generic suggestions
-- Use REAL tool names (Microsoft Copilot, Claude, ChatGPT, Notion AI, GitHub Copilot, Salesforce Einstein, etc.)
-- All text must be complete, meaningful sentences — never truncate
-- Maturity gaps must be honest and specific, not generic praise
-- Action items must be concrete and implementable, with realistic owners and deadlines
-
-Return ONLY valid JSON. No markdown. No explanation. No backticks.
-
-JSON STRUCTURE:
-{
-  "ambition": "2-3 sentence inspiring ambition statement specific to this company and industry",
-  "maturity": {
-    "direction": {"score": "1-5", "gap": "Specific honest sentence about strategic direction gap"},
-    "knowledge": {"score": "1-5", "gap": "Specific sentence about knowledge and training gap"},
-    "data": {"score": "1-5", "gap": "Specific sentence about data readiness gap"},
-    "technology": {"score": "1-5", "gap": "Specific sentence about technology gap"},
-    "governance": {"score": "1-5", "gap": "Specific sentence about governance gap"},
-    "results": {"score": "1-5", "gap": "Specific sentence about measurement gap"}
-  },
-  "useCases": {
-    "daily": [
-      {"name": "Name describing what AI does for the user", "tool": "Specific real tool", "buy": true, "configure": false, "build": false, "dataSource": "Specific source", "dataReady": true, "dataNeeds": false, "dataGap": false, "gdpr": true, "confidentiality": false, "errors": false, "security": false, "top5": true},
-      {"name": "...", "tool": "...", "buy": false, "configure": true, "build": false, "dataSource": "...", "dataReady": false, "dataNeeds": true, "dataGap": false, "gdpr": false, "confidentiality": true, "errors": true, "security": false, "top5": false},
-      {"name": "...", "tool": "...", "buy": true, "configure": false, "build": false, "dataSource": "...", "dataReady": true, "dataNeeds": false, "dataGap": false, "gdpr": true, "confidentiality": false, "errors": false, "security": false, "top5": true}
-    ],
-    "operational": [
-      {"name": "...", "tool": "...", "buy": false, "configure": true, "build": false, "dataSource": "...", "dataReady": false, "dataNeeds": true, "dataGap": false, "gdpr": true, "confidentiality": true, "errors": false, "security": false, "top5": true},
-      {"name": "...", "tool": "...", "buy": false, "configure": false, "build": true, "dataSource": "...", "dataReady": false, "dataNeeds": false, "dataGap": true, "gdpr": false, "confidentiality": true, "errors": true, "security": true, "top5": false},
-      {"name": "...", "tool": "...", "buy": true, "configure": false, "build": false, "dataSource": "...", "dataReady": true, "dataNeeds": false, "dataGap": false, "gdpr": true, "confidentiality": false, "errors": false, "security": false, "top5": true}
-    ],
-    "strategic": [
-      {"name": "...", "tool": "...", "buy": false, "configure": false, "build": true, "dataSource": "...", "dataReady": false, "dataNeeds": false, "dataGap": true, "gdpr": false, "confidentiality": true, "errors": true, "security": true, "top5": true},
-      {"name": "...", "tool": "...", "buy": false, "configure": true, "build": false, "dataSource": "...", "dataReady": false, "dataNeeds": true, "dataGap": false, "gdpr": true, "confidentiality": false, "errors": false, "security": false, "top5": false},
-      {"name": "...", "tool": "...", "buy": true, "configure": false, "build": false, "dataSource": "...", "dataReady": true, "dataNeeds": false, "dataGap": false, "gdpr": false, "confidentiality": true, "errors": false, "security": false, "top5": false}
-    ]
-  },
-  "people": {
-    "who": "Specific roles and how their daily work changes — concrete before/after",
-    "changeNarrative": "What resistance or fear to expect and the honest narrative to address it",
-    "communicationPlan": "How leadership communicates the AI journey: message, channel, cadence",
-    "leadershipRole": "What leaders must do differently to model AI adoption — specific behaviours",
-    "quickWin": "One specific early win that builds confidence and momentum across the organisation",
-    "training": {"intro": true, "prompt": true, "toolSpecific": false, "leadership": true},
-    "adoption": {"guidelines": true, "champions": true, "workshops": false, "support": true}
-  },
-  "success": {
-    "after90": "Specific measurable success statement for 90 days",
-    "metrics": {"time": true, "quality": true, "adoption": true, "revenue": false, "risk": false},
-    "baseline": "Current baseline starting point — specific and honest"
-  },
-  "actions": {
-    "days30": [
-      {"action": "Implementation step that ENABLES a use case — not a restatement of it", "owner": "Specific role", "deadline": "DD.MM.${YEAR}"},
-      {"action": "...", "owner": "...", "deadline": "DD.MM.${YEAR}"},
-      {"action": "...", "owner": "...", "deadline": "DD.MM.${YEAR}"}
-    ],
-    "days90": [
-      {"action": "...", "owner": "...", "deadline": "DD.MM.${YEAR}"},
-      {"action": "...", "owner": "...", "deadline": "DD.MM.${YEAR}"},
-      {"action": "...", "owner": "...", "deadline": "DD.MM.${YEAR}"}
-    ],
-    "days180": [
-      {"action": "...", "owner": "...", "deadline": "DD.MM.${YEAR+1}"},
-      {"action": "...", "owner": "...", "deadline": "DD.MM.${YEAR+1}"},
-      {"action": "...", "owner": "...", "deadline": "DD.MM.${YEAR+1}"}
-    ]
   }
-}`;
 
-    const bgSystemPrompt = `You are a senior AI market intelligence analyst. Write a rich, inspiring background intelligence paper. Be specific, name real companies, tools, statistics. Write in English.`;
-
-    const mergePlan = (parsed) => ({
-      ...defaultPlan, ...parsed,
-      maturity: {...defaultPlan.maturity,...parsed.maturity},
-      useCases: {
-        daily: (parsed.useCases?.daily||[]).map(u=>({...defaultPlan.useCases.daily[0],...u})),
-        operational: (parsed.useCases?.operational||[]).map(u=>({...defaultPlan.useCases.operational[0],...u})),
-        strategic: (parsed.useCases?.strategic||[]).map(u=>({...defaultPlan.useCases.strategic[0],...u})),
+  function mergePlan(parsed) {
+    return Object.assign({},defaultPlan,parsed,{
+      maturity:Object.assign({},defaultPlan.maturity,parsed.maturity||{}),
+      useCases:{
+        daily:(parsed.useCases&&parsed.useCases.daily||[]).map(function(u){return Object.assign({},emptyUC(),u);}),
+        operational:(parsed.useCases&&parsed.useCases.operational||[]).map(function(u){return Object.assign({},emptyUC(),u);}),
+        strategic:(parsed.useCases&&parsed.useCases.strategic||[]).map(function(u){return Object.assign({},emptyUC(),u);})
       },
-      people: {
-        ...defaultPlan.people,...parsed.people,
-        training:{...defaultPlan.people.training,...parsed.people?.training},
-        adoption:{...defaultPlan.people.adoption,...parsed.people?.adoption},
-        changeNarrative:parsed.people?.changeNarrative||"",
-        communicationPlan:parsed.people?.communicationPlan||"",
-        leadershipRole:parsed.people?.leadershipRole||"",
-        quickWin:parsed.people?.quickWin||"",
-      },
-      success:{...defaultPlan.success,...parsed.success,metrics:{...defaultPlan.success.metrics,...parsed.success?.metrics}},
+      people:Object.assign({},defaultPlan.people,parsed.people||{},{
+        training:Object.assign({},defaultPlan.people.training,(parsed.people&&parsed.people.training)||{}),
+        adoption:Object.assign({},defaultPlan.people.adoption,(parsed.people&&parsed.people.adoption)||{})
+      }),
+      success:Object.assign({},defaultPlan.success,parsed.success||{},{
+        metrics:Object.assign({},defaultPlan.success.metrics,(parsed.success&&parsed.success.metrics)||{})
+      })
     });
+  }
 
-    try {
-      // Plan generation with web search
-      const pd = await callProxy({
-        model:"claude-sonnet-4-5", max_tokens:5000,
-        tools:[{type:"web_search_20250305",name:"web_search"}],
-        system: planSystemPrompt,
-        messages:[{role:"user",content:`Research this company's industry and generate a complete AI Execution Plan.\n\n${ctx}`}]
-      });
-      const rawText = pd.content?.filter(b=>b.type==="text").map(b=>b.text||"").join("")||"{}";
-      setPlan(mergePlan(JSON.parse(rawText.replace(/```json|```/g,"").trim())));
+  function generate() {
+    setStep(2); setLoading(true); setError("");
+    var stages = [
+      ["🔍 Reading your strategy...","Extracting priorities and context"],
+      ["🌍 Researching your industry...","Fetching market intelligence and competitor moves"],
+      ["💡 Identifying AI opportunities...","Matching use cases to your specific situation"],
+      ["🗺️ Building your action plan...","Sequencing 30/90/180 day priorities"],
+      ["📚 Writing background intelligence...","Compiling market research and inspiration"]
+    ];
+    var si = 0;
+    setLoadingMsg(stages[0][0]); setLoadingDetail(stages[0][1]);
+    var iv = setInterval(function(){
+      si=(si+1)%stages.length;
+      setLoadingMsg(stages[si][0]); setLoadingDetail(stages[si][1]);
+    },4500);
 
-      // Brief pause to avoid rate limits between calls
-      await sleep(8000);
+    var ctx = "COMPANY: "+(company||"Not specified")+"\nWEBSITE: "+(companyUrl||"Not provided")+"\nSTRATEGY:\n"+strategyText+"\nINDUSTRY: "+(answers.industry||"Infer from strategy")+"\nAI MATURITY: "+(answers.aiMaturity||"Not specified")+"\nBIGGEST CHALLENGE: "+(answers.biggestChallenge||"Not specified")+"\nTODAY: "+TODAY+" (Year: "+YEAR+")";
 
-      // Background paper with web search
-      const bgd = await callProxy({
-        model:"claude-sonnet-4-5", max_tokens:3000,
-        tools:[{type:"web_search_20250305",name:"web_search"}],
-        system: bgSystemPrompt,
-        messages:[{role:"user",content:`Research and write a 700-900 word background intelligence paper for this company's AI Execution Plan. Search for real data, real competitors, real tools.\n\nContext:\n${ctx}\n\n## Market & AI Trends\n## The Biggest AI Opportunities\n## Technology Landscape\n## Risks & Governance\n## Why Act Now`}]
-      });
-      setBg(bgd.content?.filter(b=>b.type==="text").map(b=>b.text||"").join("")||"");
-      setStep(3);
-    } catch(err) {
-      // Fallback without web search
-      try {
-        const pd = await callProxy({
-          model:"claude-sonnet-4-5", max_tokens:5000,
-          system: planSystemPrompt,
-          messages:[{role:"user",content:`Generate a complete AI Execution Plan.\n\n${ctx}`}]
-        });
-        const rawText = pd.content?.filter(b=>b.type==="text").map(b=>b.text||"").join("")||"{}";
-        setPlan(mergePlan(JSON.parse(rawText.replace(/```json|```/g,"").trim())));
-        const bgd = await callProxy({
-          model:"claude-sonnet-4-5", max_tokens:3000,
-          system: bgSystemPrompt,
-          messages:[{role:"user",content:`Write a 700-900 word background intelligence paper.\n\nContext:\n${ctx}\n\n## Market & AI Trends\n## The Biggest AI Opportunities\n## Technology Landscape\n## Risks & Governance\n## Why Act Now`}]
-        });
-        setBg(bgd.content?.filter(b=>b.type==="text").map(b=>b.text||"").join("")||"");
+    var planSystem = "You are a world-class AI strategy consultant. Write ALL content in English only.\n\nUSE CASE RULES:\n- A use case describes WHAT AI DOES — a capability, not a project task\n- CORRECT: 'AI-assisted summarisation of customer emails before response'\n- WRONG: 'Implement email AI system'\n- Daily = AI in everyday individual work\n- Operational = AI automating business processes\n- Strategic = AI creating competitive advantage\n- Action plan items must be IMPLEMENTATION STEPS, not restatements of use cases\n\nReturn ONLY valid JSON, no markdown:\n{\"ambition\":\"string\",\"maturity\":{\"direction\":{\"score\":\"3\",\"gap\":\"string\"},\"knowledge\":{\"score\":\"3\",\"gap\":\"string\"},\"data\":{\"score\":\"3\",\"gap\":\"string\"},\"technology\":{\"score\":\"3\",\"gap\":\"string\"},\"governance\":{\"score\":\"3\",\"gap\":\"string\"},\"results\":{\"score\":\"3\",\"gap\":\"string\"}},\"useCases\":{\"daily\":[{\"name\":\"string\",\"tool\":\"string\",\"buy\":true,\"configure\":false,\"build\":false,\"dataSource\":\"string\",\"dataReady\":true,\"dataNeeds\":false,\"dataGap\":false,\"gdpr\":true,\"confidentiality\":false,\"errors\":false,\"security\":false,\"top5\":true},{\"name\":\"string\",\"tool\":\"string\",\"buy\":false,\"configure\":true,\"build\":false,\"dataSource\":\"string\",\"dataReady\":false,\"dataNeeds\":true,\"dataGap\":false,\"gdpr\":false,\"confidentiality\":true,\"errors\":false,\"security\":false,\"top5\":false},{\"name\":\"string\",\"tool\":\"string\",\"buy\":true,\"configure\":false,\"build\":false,\"dataSource\":\"string\",\"dataReady\":true,\"dataNeeds\":false,\"dataGap\":false,\"gdpr\":true,\"confidentiality\":false,\"errors\":true,\"security\":false,\"top5\":true}],\"operational\":[{\"name\":\"string\",\"tool\":\"string\",\"buy\":false,\"configure\":true,\"build\":false,\"dataSource\":\"string\",\"dataReady\":false,\"dataNeeds\":true,\"dataGap\":false,\"gdpr\":true,\"confidentiality\":true,\"errors\":false,\"security\":false,\"top5\":true},{\"name\":\"string\",\"tool\":\"string\",\"buy\":false,\"configure\":false,\"build\":true,\"dataSource\":\"string\",\"dataReady\":false,\"dataNeeds\":false,\"dataGap\":true,\"gdpr\":false,\"confidentiality\":true,\"errors\":true,\"security\":true,\"top5\":false},{\"name\":\"string\",\"tool\":\"string\",\"buy\":true,\"configure\":false,\"build\":false,\"dataSource\":\"string\",\"dataReady\":true,\"dataNeeds\":false,\"dataGap\":false,\"gdpr\":true,\"confidentiality\":false,\"errors\":false,\"security\":false,\"top5\":true}],\"strategic\":[{\"name\":\"string\",\"tool\":\"string\",\"buy\":false,\"configure\":false,\"build\":true,\"dataSource\":\"string\",\"dataReady\":false,\"dataNeeds\":false,\"dataGap\":true,\"gdpr\":false,\"confidentiality\":true,\"errors\":true,\"security\":true,\"top5\":true},{\"name\":\"string\",\"tool\":\"string\",\"buy\":false,\"configure\":true,\"build\":false,\"dataSource\":\"string\",\"dataReady\":false,\"dataNeeds\":true,\"dataGap\":false,\"gdpr\":true,\"confidentiality\":false,\"errors\":false,\"security\":false,\"top5\":false},{\"name\":\"string\",\"tool\":\"string\",\"buy\":true,\"configure\":false,\"build\":false,\"dataSource\":\"string\",\"dataReady\":true,\"dataNeeds\":false,\"dataGap\":false,\"gdpr\":false,\"confidentiality\":true,\"errors\":false,\"security\":false,\"top5\":false}]},\"people\":{\"who\":\"string\",\"changeNarrative\":\"string\",\"communicationPlan\":\"string\",\"leadershipRole\":\"string\",\"quickWin\":\"string\",\"training\":{\"intro\":true,\"prompt\":true,\"toolSpecific\":false,\"leadership\":true},\"adoption\":{\"guidelines\":true,\"champions\":true,\"workshops\":false,\"support\":true}},\"success\":{\"after90\":\"string\",\"metrics\":{\"time\":true,\"quality\":true,\"adoption\":true,\"revenue\":false,\"risk\":false},\"baseline\":\"string\"},\"actions\":{\"days30\":[{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+YEAR+"\"},{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+YEAR+"\"},{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+YEAR+"\"}],\"days90\":[{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+YEAR+"\"},{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+YEAR+"\"},{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+YEAR+"\"}],\"days180\":[{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+(YEAR+1)+"\"},{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+(YEAR+1)+"\"},{\"action\":\"string\",\"owner\":\"string\",\"deadline\":\"DD.MM."+(YEAR+1)+"\"}]}}";
+
+    var bgSystem = "You are a senior AI market intelligence analyst. Write a rich inspiring background intelligence paper in English only. Name real companies, tools, statistics. Use markdown ## headers and **bold**.";
+
+    callProxy({model:"claude-sonnet-4-5",max_tokens:5000,tools:[{type:"web_search_20250305",name:"web_search"}],system:planSystem,messages:[{role:"user",content:"Research this company's industry and generate a complete AI Execution Plan.\n\n"+ctx}]})
+      .then(function(pd) {
+        var raw = pd.content.filter(function(b){return b.type==="text";}).map(function(b){return b.text||"";}).join("");
+        var parsed = JSON.parse(raw.replace(/```json|```/g,"").trim());
+        setPlan(mergePlan(parsed));
+        return sleep(5000);
+      })
+      .then(function() {
+        return callProxy({model:"claude-sonnet-4-5",max_tokens:3000,tools:[{type:"web_search_20250305",name:"web_search"}],system:bgSystem,messages:[{role:"user",content:"Research and write a 700-900 word background intelligence paper.\n\nContext:\n"+ctx+"\n\n## Market & AI Trends\n## The Biggest AI Opportunities\n## Technology Landscape\n## Risks & Governance\n## Why Act Now"}]});
+      })
+      .then(function(bgd) {
+        var txt = bgd.content.filter(function(b){return b.type==="text";}).map(function(b){return b.text||"";}).join("");
+        setBg(txt);
         setStep(3);
-      } catch(err2) {
-        setError("Error: "+err2.message); setStep(1);
-      }
-    }
-    clearInterval(iv); setLoading(false);
-  };
+        clearInterval(iv); setLoading(false);
+      })
+      .catch(function(err) {
+        setError("Error: "+err.message);
+        setStep(1);
+        clearInterval(iv); setLoading(false);
+      });
+  }
 
-  const updUC = (cat,idx,f,v) => setPlan(p=>({...p,useCases:{...p.useCases,[cat]:p.useCases[cat].map((u,i)=>i===idx?{...u,[f]:v}:u)}}));
-  const updAct = (ph,idx,f,v) => setPlan(p=>({...p,actions:{...p.actions,[ph]:p.actions[ph].map((a,i)=>i===idx?{...a,[f]:v}:a)}}));
+  function updUC(cat,idx,f,v) {
+    setPlan(function(p) {
+      var ucs = p.useCases[cat].map(function(u,i){return i===idx?Object.assign({},u,{[f]:v}):u;});
+      return Object.assign({},p,{useCases:Object.assign({},p.useCases,{[cat]:ucs})});
+    });
+  }
 
-  const mdToHtml = (t) => (t||"")
-    .replace(/## (.*)/g,`<h3 style="color:${C.dark};margin:24px 0 10px;font-size:16px;border-bottom:2px solid ${C.blush};padding-bottom:6px;font-weight:700">$1</h3>`)
-    .replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
-    .replace(/\n/g,"<br/>");
+  function updAct(ph,idx,f,v) {
+    setPlan(function(p) {
+      var acts = p.actions[ph].map(function(a,i){return i===idx?Object.assign({},a,{[f]:v}):a;});
+      return Object.assign({},p,{actions:Object.assign({},p.actions,{[ph]:acts})});
+    });
+  }
 
-  // STEP 0
+  function mdToHtml(t) {
+    return (t||"")
+      .replace(/## (.*)/g,"<h3 style=\"color:"+C.dark+";margin:24px 0 10px;font-size:16px;border-bottom:2px solid "+C.blush+";padding-bottom:6px;font-weight:700\">$1</h3>")
+      .replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
+      .replace(/\n/g,"<br/>");
+  }
+
   if (step===0) return (
     <div style={{background:C.offwhite,minHeight:"100vh",padding:32}}>
       <div style={{maxWidth:640,margin:"0 auto"}}>
@@ -431,43 +280,43 @@ JSON STRUCTURE:
         <Stepper step={0}/>
         <div style={{background:C.white,borderRadius:8,padding:32,boxShadow:"0 2px 12px rgba(44,36,32,0.07)"}}>
           <h2 style={{fontSize:16,fontWeight:700,color:C.dark,marginTop:0,marginBottom:16}}>Step 1 — Upload your strategy</h2>
-          <div onClick={()=>fileRef.current.click()} style={{border:`2px dashed ${C.greige}`,borderRadius:8,padding:"28px 24px",textAlign:"center",cursor:"pointer",background:C.offwhite,marginBottom:16}}>
+          <div onClick={function(){fileRef.current.click();}} style={{border:"2px dashed "+C.greige,borderRadius:8,padding:"28px 24px",textAlign:"center",cursor:"pointer",background:C.offwhite,marginBottom:16}}>
             <div style={{fontSize:32,marginBottom:8}}>📄</div>
             <div style={{fontWeight:600,color:C.dark,fontSize:14}}>Click to upload PDF or PowerPoint</div>
-            <div style={{fontSize:12,color:C.greigeDark,marginTop:4}}>Accepts .pdf and .pptx — strategy, annual report, business plan</div>
-            {fileName&&<div style={{marginTop:10,color:C.blushDark,fontWeight:600,fontSize:13}}>✓ {fileName}</div>}
+            <div style={{fontSize:12,color:C.greigeDark,marginTop:4}}>Accepts .pdf and .pptx</div>
+            {fileName && <div style={{marginTop:10,color:C.blushDark,fontWeight:600,fontSize:13}}>✓ {fileName}</div>}
           </div>
           <input ref={fileRef} type="file" accept=".pdf,.pptx" onChange={handleFile} style={{display:"none"}}/>
-          {loading&&<div style={{color:C.greigeDark,fontSize:13,marginBottom:12,textAlign:"center",padding:"8px 0"}}>⏳ Reading document...</div>}
+          {loading && <div style={{color:C.greigeDark,fontSize:13,marginBottom:12,textAlign:"center"}}>⏳ Reading document...</div>}
           <div style={{marginBottom:16}}>
             <label style={{fontSize:13,fontWeight:600,color:C.dark,display:"block",marginBottom:6}}>Or describe your strategy here:</label>
-            <textarea value={strategyText} onChange={e=>setStrategyText(e.target.value)} placeholder="Paste or type your key strategic priorities, goals, challenges, market position..." style={{width:"100%",minHeight:120,border:`1px solid ${C.midGrey}`,borderRadius:6,padding:"10px 12px",fontSize:13,color:C.dark,fontFamily:"inherit",resize:"vertical"}}/>
+            <textarea value={strategyText} onChange={function(e){setStrategyText(e.target.value);}} placeholder="Paste or type your key strategic priorities, goals, challenges..." style={{width:"100%",minHeight:120,border:"1px solid "+C.midGrey,borderRadius:6,padding:"10px 12px",fontSize:13,color:C.dark,fontFamily:"inherit",resize:"vertical"}}/>
           </div>
           <div style={{display:"flex",gap:12,marginBottom:16}}>
             <div style={{flex:1}}>
               <label style={{fontSize:12,fontWeight:600,color:C.dark,display:"block",marginBottom:4}}>Company name</label>
-              <input value={company} onChange={e=>setCompany(e.target.value)} placeholder="Acme A/S" style={{width:"100%",border:`1px solid ${C.midGrey}`,borderRadius:4,padding:"8px 10px",fontSize:13}}/>
+              <input value={company} onChange={function(e){setCompany(e.target.value);}} placeholder="Acme A/S" style={{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"8px 10px",fontSize:13}}/>
             </div>
             <div style={{flex:1}}>
               <label style={{fontSize:12,fontWeight:600,color:C.dark,display:"block",marginBottom:4}}>Owner / Contact</label>
-              <input value={owner} onChange={e=>setOwner(e.target.value)} placeholder="Your name" style={{width:"100%",border:`1px solid ${C.midGrey}`,borderRadius:4,padding:"8px 10px",fontSize:13}}/>
+              <input value={owner} onChange={function(e){setOwner(e.target.value);}} placeholder="Your name" style={{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"8px 10px",fontSize:13}}/>
             </div>
           </div>
           <div style={{marginBottom:16}}>
             <label style={{fontSize:12,fontWeight:600,color:C.dark,display:"block",marginBottom:4}}>Company website <span style={{fontWeight:400,color:C.greigeDark}}>(optional — helps us research your context)</span></label>
-            <input value={companyUrl} onChange={e=>setCompanyUrl(e.target.value)} placeholder="https://www.yourcompany.com" style={{width:"100%",border:`1px solid ${C.midGrey}`,borderRadius:4,padding:"8px 10px",fontSize:13}}/>
+            <input value={companyUrl} onChange={function(e){setCompanyUrl(e.target.value);}} placeholder="https://www.yourcompany.com" style={{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"8px 10px",fontSize:13}}/>
           </div>
-          <div style={{background:C.lightGrey,borderRadius:8,padding:"14px 16px",border:`1px solid ${C.midGrey}`,marginBottom:16}}>
+          <div style={{background:C.lightGrey,borderRadius:8,padding:"14px 16px",border:"1px solid "+C.midGrey,marginBottom:16}}>
             <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
-              <input type="checkbox" id="consent" checked={consented} onChange={e=>setConsented(e.target.checked)} style={{accentColor:C.dark,width:16,height:16,marginTop:2,flexShrink:0}}/>
+              <input type="checkbox" id="consent" checked={consented} onChange={function(e){setConsented(e.target.checked);}} style={{accentColor:C.dark,width:16,height:16,marginTop:2,flexShrink:0}}/>
               <label htmlFor="consent" style={{fontSize:12,color:C.dark,lineHeight:1.6,cursor:"pointer"}}>
                 <strong>Privacy notice:</strong> Your document is sent to Anthropic's API for processing. It is <strong>not stored by AILY</strong>. Anthropic does not use API data for model training. Do not upload strictly confidential documents without consulting your organisation's data policy.
               </label>
             </div>
             <div style={{marginTop:8,paddingLeft:26,fontSize:11,color:C.greigeDark}}>🔒 No data stored by AILY · Session only · Processed via Anthropic API</div>
           </div>
-          {error&&<div style={{marginBottom:12,background:"#fde8e8",border:"1px solid #f4b4b2",borderRadius:6,padding:"10px 14px",fontSize:12,color:"#8b0000"}}>⚠️ {error}</div>}
-          <button onClick={()=>strategyText.trim()&&consented?setStep(1):null} disabled={!strategyText.trim()||!consented}
+          {error && <div style={{marginBottom:12,background:"#fde8e8",border:"1px solid #f4b4b2",borderRadius:6,padding:"10px 14px",fontSize:12,color:"#8b0000"}}>⚠️ {error}</div>}
+          <button onClick={function(){if(strategyText.trim()&&consented)setStep(1);}} disabled={!strategyText.trim()||!consented}
             style={{background:strategyText.trim()&&consented?C.dark:C.midGrey,color:C.white,border:"none",borderRadius:6,padding:"12px 28px",fontSize:14,fontWeight:700,cursor:strategyText.trim()&&consented?"pointer":"not-allowed",width:"100%"}}>
             Continue →
           </button>
@@ -476,7 +325,6 @@ JSON STRUCTURE:
     </div>
   );
 
-  // STEP 1
   if (step===1) return (
     <div style={{background:C.offwhite,minHeight:"100vh",padding:32}}>
       <div style={{maxWidth:640,margin:"0 auto"}}>
@@ -488,16 +336,18 @@ JSON STRUCTURE:
         <div style={{background:C.white,borderRadius:8,padding:32,boxShadow:"0 2px 12px rgba(44,36,32,0.07)"}}>
           <h2 style={{fontSize:16,fontWeight:700,color:C.dark,marginTop:0,marginBottom:6}}>Step 2 — Three quick questions</h2>
           <p style={{fontSize:13,color:C.greigeDark,marginBottom:20}}>Your answers sharpen the plan. The more specific, the better.</p>
-          {error&&<div style={{marginBottom:16,background:"#fde8e8",border:"1px solid #f4b4b2",borderRadius:6,padding:"10px 14px",fontSize:12,color:"#8b0000"}}>⚠️ {error}</div>}
-          {QUESTIONS.map(q=>(
-            <div key={q.id} style={{marginBottom:18}}>
-              <label style={{fontSize:13,fontWeight:600,color:C.dark,display:"block",marginBottom:6}}>{q.label}</label>
-              <input value={answers[q.id]||""} onChange={e=>setAnswers(a=>({...a,[q.id]:e.target.value}))} placeholder={q.placeholder}
-                style={{width:"100%",border:`1px solid ${C.midGrey}`,borderRadius:4,padding:"9px 12px",fontSize:13,color:C.dark,fontFamily:"inherit"}}/>
-            </div>
-          ))}
+          {error && <div style={{marginBottom:16,background:"#fde8e8",border:"1px solid #f4b4b2",borderRadius:6,padding:"10px 14px",fontSize:12,color:"#8b0000"}}>⚠️ {error}</div>}
+          {QUESTIONS.map(function(q) {
+            return (
+              <div key={q.id} style={{marginBottom:18}}>
+                <label style={{fontSize:13,fontWeight:600,color:C.dark,display:"block",marginBottom:6}}>{q.label}</label>
+                <input value={answers[q.id]||""} onChange={function(e){setAnswers(function(a){return Object.assign({},a,{[q.id]:e.target.value});});}} placeholder={q.placeholder}
+                  style={{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"9px 12px",fontSize:13,color:C.dark,fontFamily:"inherit"}}/>
+              </div>
+            );
+          })}
           <div style={{display:"flex",gap:12,marginTop:8}}>
-            <button onClick={()=>setStep(0)} style={{background:C.offwhite,color:C.dark,border:`1px solid ${C.midGrey}`,borderRadius:6,padding:"11px 20px",fontSize:13,fontWeight:600,cursor:"pointer"}}>← Back</button>
+            <button onClick={function(){setStep(0);}} style={{background:C.offwhite,color:C.dark,border:"1px solid "+C.midGrey,borderRadius:6,padding:"11px 20px",fontSize:13,fontWeight:600,cursor:"pointer"}}>← Back</button>
             <button onClick={generate} style={{flex:1,background:C.dark,color:C.white,border:"none",borderRadius:6,padding:"12px 28px",fontSize:14,fontWeight:700,cursor:"pointer"}}>Generate My AI Execution Plan →</button>
           </div>
         </div>
@@ -505,7 +355,6 @@ JSON STRUCTURE:
     </div>
   );
 
-  // STEP 2
   if (step===2) return (
     <div style={{background:C.offwhite,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:32}}>
       <div style={{textAlign:"center",maxWidth:480}}>
@@ -521,229 +370,197 @@ JSON STRUCTURE:
     </div>
   );
 
-  // STEP 3
   if (step===3&&plan) {
-    const UCRow = ({uc,cat,idx}) => (
-      <div style={{borderBottom:`1px solid ${C.lightGrey}`,padding:"12px 0",display:"grid",gridTemplateColumns:"2fr 1.6fr 1.4fr 1.4fr 36px",gap:10,alignItems:"start"}}>
-        <Field value={uc.name} onChange={v=>updUC(cat,idx,"name",v)} placeholder="What AI does for the user..." multi style={{minHeight:64,fontSize:12}}/>
-        <div>
-          <Field value={uc.tool} onChange={v=>updUC(cat,idx,"tool",v)} placeholder="Tool / approach" multi style={{minHeight:64,fontSize:12}}/>
-          <div style={{display:"flex",gap:8,marginTop:6,flexWrap:"wrap"}}>
-            {["buy","configure","build"].map(o=>(
-              <label key={o} style={{fontSize:11,display:"flex",alignItems:"center",gap:3,cursor:"pointer"}}>
-                <input type="checkbox" checked={uc[o]} onChange={e=>updUC(cat,idx,o,e.target.checked)} style={{accentColor:C.dark}}/>{o.charAt(0).toUpperCase()+o.slice(1)}
-              </label>
-            ))}
+    function UCRow({uc,cat,idx}) {
+      return (
+        <div style={{borderBottom:"1px solid "+C.lightGrey,padding:"12px 0",display:"grid",gridTemplateColumns:"2fr 1.6fr 1.4fr 1.4fr 36px",gap:10,alignItems:"start"}}>
+          <Field value={uc.name} onChange={function(v){updUC(cat,idx,"name",v);}} placeholder="What AI does for the user..." multi style={{minHeight:64,fontSize:12}}/>
+          <div>
+            <Field value={uc.tool} onChange={function(v){updUC(cat,idx,"tool",v);}} placeholder="Tool / approach" multi style={{minHeight:64,fontSize:12}}/>
+            <div style={{display:"flex",gap:8,marginTop:6,flexWrap:"wrap"}}>
+              {["buy","configure","build"].map(function(o){return(
+                <label key={o} style={{fontSize:11,display:"flex",alignItems:"center",gap:3,cursor:"pointer"}}>
+                  <input type="checkbox" checked={uc[o]} onChange={function(e){updUC(cat,idx,o,e.target.checked);}} style={{accentColor:C.dark}}/>{o.charAt(0).toUpperCase()+o.slice(1)}
+                </label>
+              );})}
+            </div>
           </div>
-        </div>
-        <div>
-          <Field value={uc.dataSource} onChange={v=>updUC(cat,idx,"dataSource",v)} placeholder="Data source" multi style={{minHeight:64,fontSize:12}}/>
-          <div style={{display:"flex",gap:4,marginTop:6,flexWrap:"wrap"}}>
-            {[["dataReady","Ready"],["dataNeeds","Needs work"],["dataGap","Gap"]].map(([k,l])=>(
-              <label key={k} style={{fontSize:11,display:"flex",alignItems:"center",gap:3,cursor:"pointer"}}>
-                <input type="checkbox" checked={uc[k]} onChange={e=>updUC(cat,idx,k,e.target.checked)} style={{accentColor:C.dark}}/>{l}
-              </label>
-            ))}
+          <div>
+            <Field value={uc.dataSource} onChange={function(v){updUC(cat,idx,"dataSource",v);}} placeholder="Data source" multi style={{minHeight:64,fontSize:12}}/>
+            <div style={{display:"flex",gap:4,marginTop:6,flexWrap:"wrap"}}>
+              {[["dataReady","Ready"],["dataNeeds","Needs work"],["dataGap","Gap"]].map(function(kl){return(
+                <label key={kl[0]} style={{fontSize:11,display:"flex",alignItems:"center",gap:3,cursor:"pointer"}}>
+                  <input type="checkbox" checked={uc[kl[0]]} onChange={function(e){updUC(cat,idx,kl[0],e.target.checked);}} style={{accentColor:C.dark}}/>{kl[1]}
+                </label>
+              );})}
+            </div>
           </div>
+          <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+            {[["gdpr","GDPR"],["confidentiality","Conf."],["errors","Errors"],["security","Sec."]].map(function(kl){return(
+              <label key={kl[0]} style={{fontSize:11,display:"flex",alignItems:"center",gap:3,cursor:"pointer"}}>
+                <input type="checkbox" checked={uc[kl[0]]} onChange={function(e){updUC(cat,idx,kl[0],e.target.checked);}} style={{accentColor:C.dark}}/>{kl[1]}
+              </label>
+            );})}
+          </div>
+          <label style={{cursor:"pointer",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",paddingTop:16}}>
+            <input type="checkbox" checked={uc.top5} onChange={function(e){updUC(cat,idx,"top5",e.target.checked);}} style={{display:"none"}}/>
+            <span style={{color:uc.top5?"#e5a800":C.midGrey}}>★</span>
+          </label>
         </div>
-        <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-          {[["gdpr","GDPR"],["confidentiality","Conf."],["errors","Errors"],["security","Sec."]].map(([k,l])=>(
-            <label key={k} style={{fontSize:11,display:"flex",alignItems:"center",gap:3,cursor:"pointer"}}>
-              <input type="checkbox" checked={uc[k]} onChange={e=>updUC(cat,idx,k,e.target.checked)} style={{accentColor:C.dark}}/>{l}
-            </label>
-          ))}
-        </div>
-        <label style={{cursor:"pointer",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",paddingTop:16}}>
-          <input type="checkbox" checked={uc.top5} onChange={e=>updUC(cat,idx,"top5",e.target.checked)} style={{display:"none"}}/>
-          <span style={{color:uc.top5?"#e5a800":C.midGrey}}>★</span>
-        </label>
-      </div>
-    );
+      );
+    }
 
     return (
       <div style={{background:C.offwhite,minHeight:"100vh"}}>
-        {/* Header */}
         <div className="no-print" style={{background:C.dark,color:C.white,padding:"16px 32px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
           <div>
             <div style={{fontSize:11,color:C.greige,letterSpacing:"0.1em",textTransform:"uppercase"}}>aily.dk</div>
             <h1 style={{fontSize:20,fontWeight:800,margin:"2px 0 0",color:C.white}}>AI Execution Plan</h1>
-            {company&&<div style={{fontSize:12,color:C.greige,marginTop:2}}>{company}{owner?` · ${owner}`:""} · {TODAY}</div>}
+            {company&&<div style={{fontSize:12,color:C.greige,marginTop:2}}>{company}{owner?" · "+owner:""} · {TODAY}</div>}
           </div>
           <div style={{display:"flex",gap:10}}>
-            <button onClick={()=>setStep(0)} style={{background:"transparent",color:C.greige,border:`1px solid ${C.greige}`,borderRadius:5,padding:"7px 14px",fontSize:12,cursor:"pointer"}}>← Start over</button>
-            <button onClick={()=>window.print()} style={{background:C.blush,color:C.dark,border:"none",borderRadius:5,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>🖨 Print / Save PDF</button>
+            <button onClick={function(){setStep(0);}} style={{background:"transparent",color:C.greige,border:"1px solid "+C.greige,borderRadius:5,padding:"7px 14px",fontSize:12,cursor:"pointer"}}>← Start over</button>
+            <button onClick={function(){window.print();}} style={{background:C.blush,color:C.dark,border:"none",borderRadius:5,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>🖨 Print / Save PDF</button>
           </div>
         </div>
-
-        {/* Tabs */}
-        <div className="no-print" style={{background:C.white,borderBottom:`1px solid ${C.midGrey}`,padding:"0 32px",display:"flex",position:"sticky",top:57,zIndex:99}}>
-          {[["plan","📋 AI Execution Plan"],["background","📚 Background Paper"]].map(([id,label])=>(
-            <button key={id} onClick={()=>setActiveTab(id)} style={{background:"transparent",border:"none",borderBottom:activeTab===id?`3px solid ${C.dark}`:"3px solid transparent",padding:"14px 20px",fontSize:13,fontWeight:activeTab===id?700:400,color:activeTab===id?C.dark:C.greigeDark,cursor:"pointer"}}>{label}</button>
-          ))}
+        <div className="no-print" style={{background:C.white,borderBottom:"1px solid "+C.midGrey,padding:"0 32px",display:"flex",position:"sticky",top:57,zIndex:99}}>
+          {[["plan","📋 AI Execution Plan"],["background","📚 Background Paper"]].map(function(il){return(
+            <button key={il[0]} onClick={function(){setActiveTab(il[0]);}} style={{background:"transparent",border:"none",borderBottom:activeTab===il[0]?"3px solid "+C.dark:"3px solid transparent",padding:"14px 20px",fontSize:13,fontWeight:activeTab===il[0]?700:400,color:activeTab===il[0]?C.dark:C.greigeDark,cursor:"pointer"}}>{il[1]}</button>
+          );})}
         </div>
-
         <div style={{maxWidth:1150,margin:"0 auto",padding:"28px 24px 80px"}}>
-          {activeTab==="plan"&&<>
-
-            {/* Ambition */}
+          {activeTab==="plan"&&<div>
             <div style={{background:C.white,borderRadius:8,marginBottom:24,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}}>
               <SecHead title="AI Ambition" color={C.blush}/>
               <div style={{padding:20}}>
                 <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.08em",display:"block",marginBottom:10}}>Our AI Ambition</label>
-                <textarea value={plan.ambition} onChange={e=>setPlan(p=>({...p,ambition:e.target.value}))}
-                  style={{width:"100%",border:`1px solid ${C.midGrey}`,borderRadius:4,padding:"12px 14px",fontSize:15,color:C.dark,fontFamily:"inherit",resize:"vertical",minHeight:80,fontStyle:"italic",lineHeight:1.6}}/>
+                <textarea value={plan.ambition} onChange={function(e){setPlan(function(p){return Object.assign({},p,{ambition:e.target.value});});}}
+                  style={{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"12px 14px",fontSize:15,color:C.dark,fontFamily:"inherit",resize:"vertical",minHeight:80,fontStyle:"italic",lineHeight:1.6}}/>
               </div>
             </div>
 
-            {/* Maturity */}
             <div style={{background:C.white,borderRadius:8,marginBottom:24,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:C.greige,padding:"10px 16px"}}>
                 <span style={{fontWeight:700,fontSize:12,letterSpacing:"0.08em",textTransform:"uppercase",color:C.white}}>AI Maturity Assessment</span>
-                <a href="https://www.aily.dk/aily-ai-pulse" target="_blank" rel="noopener noreferrer"
-                  style={{fontSize:11,color:C.white,textDecoration:"none",background:"rgba(255,255,255,0.2)",padding:"4px 10px",borderRadius:12,fontWeight:600,whiteSpace:"nowrap"}}>
-                  Take the full AI Pulse →
-                </a>
+                <a href="https://www.aily.dk/aily-ai-pulse" target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:C.white,textDecoration:"none",background:"rgba(255,255,255,0.2)",padding:"4px 10px",borderRadius:12,fontWeight:600,whiteSpace:"nowrap"}}>Take the full AI Pulse →</a>
               </div>
-              <div style={{padding:"12px 16px",background:C.lightGrey,borderBottom:`1px solid ${C.midGrey}`}}>
-                <p style={{fontSize:12,color:C.greigeDark,margin:0}}>This is a high-level maturity estimate based on your strategy and answers. For a full, validated AI maturity assessment across all dimensions, <a href="https://www.aily.dk/aily-ai-pulse" target="_blank" rel="noopener noreferrer" style={{color:C.dark,fontWeight:600}}>take the AILY AI Pulse at aily.dk/aily-ai-pulse</a>.</p>
+              <div style={{padding:"12px 16px",background:C.lightGrey,borderBottom:"1px solid "+C.midGrey}}>
+                <p style={{fontSize:12,color:C.greigeDark,margin:0}}>High-level estimate based on your strategy. For a full validated assessment, <a href="https://www.aily.dk/aily-ai-pulse" target="_blank" rel="noopener noreferrer" style={{color:C.dark,fontWeight:600}}>take the AILY AI Pulse</a>.</p>
               </div>
               <div style={{padding:16,display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
-                {MAT_LABELS.map(([k,label])=>(
-                  <div key={k} style={{background:C.lightGrey,borderRadius:6,padding:14}}>
-                    <div style={{fontSize:11,fontWeight:700,color:C.dark,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:10}}>{label}</div>
+                {MAT_LABELS.map(function(kl){return(
+                  <div key={kl[0]} style={{background:C.lightGrey,borderRadius:6,padding:14}}>
+                    <div style={{fontSize:11,fontWeight:700,color:C.dark,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:10}}>{kl[1]}</div>
                     <label style={{fontSize:11,color:C.greigeDark,display:"block",marginBottom:4}}>Score (1-5):</label>
-                    <input value={plan.maturity[k]?.score||""} onChange={e=>setPlan(p=>({...p,maturity:{...p.maturity,[k]:{...p.maturity[k],score:e.target.value}}}))}
-                      style={{width:"100%",border:`1px solid ${C.midGrey}`,borderRadius:4,padding:"6px 8px",fontSize:14,fontWeight:700,marginBottom:10}}/>
+                    <input value={plan.maturity[kl[0]]?plan.maturity[kl[0]].score:""} onChange={function(e){setPlan(function(p){var m=Object.assign({},p.maturity);m[kl[0]]=Object.assign({},m[kl[0]],{score:e.target.value});return Object.assign({},p,{maturity:m});});}}
+                      style={{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"6px 8px",fontSize:14,fontWeight:700,marginBottom:10}}/>
                     <label style={{fontSize:11,color:C.greigeDark,display:"block",marginBottom:4}}>Biggest gap:</label>
-                    <textarea value={plan.maturity[k]?.gap||""} onChange={e=>setPlan(p=>({...p,maturity:{...p.maturity,[k]:{...p.maturity[k],gap:e.target.value}}}))}
-                      style={{width:"100%",border:`1px solid ${C.midGrey}`,borderRadius:4,padding:"6px 8px",fontSize:12,fontFamily:"inherit",resize:"vertical",minHeight:64,lineHeight:1.5}}/>
+                    <textarea value={plan.maturity[kl[0]]?plan.maturity[kl[0]].gap:""} onChange={function(e){setPlan(function(p){var m=Object.assign({},p.maturity);m[kl[0]]=Object.assign({},m[kl[0]],{gap:e.target.value});return Object.assign({},p,{maturity:m});});}}
+                      style={{width:"100%",border:"1px solid "+C.midGrey,borderRadius:4,padding:"6px 8px",fontSize:12,fontFamily:"inherit",resize:"vertical",minHeight:64,lineHeight:1.5}}/>
                   </div>
-                ))}
+                );})}
               </div>
             </div>
 
-            {/* Use Cases */}
             <div style={{background:C.white,borderRadius:8,marginBottom:24,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}}>
               <SecHead title="Use Cases · Technology · Data · Governance" color={C.greige}/>
               <div style={{padding:"0 16px 16px"}}>
-                <div style={{display:"grid",gridTemplateColumns:"2fr 1.6fr 1.4fr 1.4fr 36px",gap:10,padding:"10px 0 8px",borderBottom:`2px solid ${C.midGrey}`}}>
-                  {["Use Case","Technology","Data","Governance","★"].map(h=>(
-                    <div key={h} style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em"}}>{h}</div>
-                  ))}
+                <div style={{display:"grid",gridTemplateColumns:"2fr 1.6fr 1.4fr 1.4fr 36px",gap:10,padding:"10px 0 8px",borderBottom:"2px solid "+C.midGrey}}>
+                  {["Use Case","Technology","Data","Governance","★"].map(function(h){return <div key={h} style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em"}}>{h}</div>;})}
                 </div>
-                {[["daily","Daily Productivity",C.lightGrey],["operational","Operational",C.offwhite],["strategic","Strategic",C.lightGrey]].map(([cat,label,bg])=>(
-                  <div key={cat} style={{background:bg,padding:"4px 0"}}>
-                    <div style={{padding:"8px 0 2px",fontSize:11,fontWeight:800,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.1em",borderTop:`1px solid ${C.midGrey}`,marginTop:4}}>{label}</div>
-                    {(plan.useCases[cat]||[]).map((uc,idx)=><UCRow key={idx} uc={uc} cat={cat} idx={idx}/>)}
-                  </div>
-                ))}
+                {[["daily","Daily Productivity",C.lightGrey],["operational","Operational",C.offwhite],["strategic","Strategic",C.lightGrey]].map(function(cl){return(
+                  <div key={cl[0]} style={{background:cl[2],padding:"4px 0"}}>
+                    <div style={{padding:"8px 0 2px",fontSize:11,fontWeight:800,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.1em",borderTop:"1px solid "+C.midGrey,marginTop:4}}>{cl[1]}</div>
+                    {(plan.useCases[cl[0]]||[]).map(function(uc,idx){return <UCRow key={idx} uc={uc} cat={cl[0]} idx={idx}/>;})}</div>
+                );})}
               </div>
             </div>
 
-            {/* People & Success */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24,marginBottom:24}}>
               <div style={{background:C.white,borderRadius:8,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}}>
                 <SecHead title="People, Training & Change Management" color={C.greige}/>
                 <div style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
-                  {[
-                    ["who","Who changes — and how?","Which roles and how their daily work changes..."],
-                    ["changeNarrative","Change narrative & resistance","What resistance to expect and how to address it..."],
-                    ["communicationPlan","Communication plan","How leadership communicates the AI journey..."],
-                    ["leadershipRole","Leadership role","What leaders must do differently to model AI adoption..."],
-                    ["quickWin","The quick win that builds momentum","One early win that creates confidence across the organisation..."],
-                  ].map(([field,label,placeholder])=>(
-                    <div key={field}>
-                      <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:6}}>{label}</label>
-                      <Field multi value={plan.people?.[field]||""} onChange={v=>setPlan(p=>({...p,people:{...p.people,[field]:v}}))} placeholder={placeholder} style={{minHeight:64}}/>
+                  {[["who","Who changes — and how?","Which roles and how their daily work changes..."],["changeNarrative","Change narrative & resistance","What resistance to expect and how to address it..."],["communicationPlan","Communication plan","How leadership communicates the AI journey..."],["leadershipRole","Leadership role","What leaders must do differently..."],["quickWin","The quick win that builds momentum","One early win that creates confidence..."]].map(function(fl){return(
+                    <div key={fl[0]}>
+                      <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:6}}>{fl[1]}</label>
+                      <Field multi value={plan.people[fl[0]]||""} onChange={function(v){setPlan(function(p){return Object.assign({},p,{people:Object.assign({},p.people,{[fl[0]]:v})});});}} placeholder={fl[2]} style={{minHeight:64}}/>
                     </div>
-                  ))}
+                  );})}
                   <div>
                     <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:6}}>Training</label>
                     <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                      {[["intro","Intro"],["prompt","Prompt Skills"],["toolSpecific","Tool-specific"],["leadership","Leadership"]].map(([k,l])=>(
-                        <Check key={k} label={l} checked={plan.people?.training?.[k]||false} onChange={v=>setPlan(p=>({...p,people:{...p.people,training:{...p.people.training,[k]:v}}}))}/>
-                      ))}
-                    </div>
+                      {[["intro","Intro"],["prompt","Prompt Skills"],["toolSpecific","Tool-specific"],["leadership","Leadership"]].map(function(kl){return <Check key={kl[0]} label={kl[1]} checked={plan.people.training[kl[0]]||false} onChange={function(v){setPlan(function(p){return Object.assign({},p,{people:Object.assign({},p.people,{training:Object.assign({},p.people.training,{[kl[0]]:v})})});}}}/>;})}</div>
                   </div>
                   <div>
                     <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:6}}>Adoption approach</label>
                     <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                      {[["guidelines","Guidelines"],["champions","Champions"],["workshops","Workshops"],["support","Support Channel"]].map(([k,l])=>(
-                        <Check key={k} label={l} checked={plan.people?.adoption?.[k]||false} onChange={v=>setPlan(p=>({...p,people:{...p.people,adoption:{...p.people.adoption,[k]:v}}}))}/>
-                      ))}
-                    </div>
+                      {[["guidelines","Guidelines"],["champions","Champions"],["workshops","Workshops"],["support","Support Channel"]].map(function(kl){return <Check key={kl[0]} label={kl[1]} checked={plan.people.adoption[kl[0]]||false} onChange={function(v){setPlan(function(p){return Object.assign({},p,{people:Object.assign({},p.people,{adoption:Object.assign({},p.people.adoption,{[kl[0]]:v})})});}}}/>;})}</div>
                   </div>
                 </div>
               </div>
-
               <div style={{background:C.white,borderRadius:8,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}}>
                 <SecHead title="How We Measure Success" color={C.greige}/>
                 <div style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
                   <div>
                     <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>After 90 days we've succeeded if:</label>
-                    <Field multi value={plan.success?.after90||""} onChange={v=>setPlan(p=>({...p,success:{...p.success,after90:v}}))} style={{minHeight:80}}/>
+                    <Field multi value={plan.success.after90||""} onChange={function(v){setPlan(function(p){return Object.assign({},p,{success:Object.assign({},p.success,{after90:v})});});}} style={{minHeight:80}}/>
                   </div>
                   <div>
                     <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Key Metrics</label>
                     <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                      {[["time","Time saved"],["quality","Quality"],["adoption","Adoption"],["revenue","Revenue"],["risk","Risk"]].map(([k,l])=>(
-                        <Check key={k} label={l} checked={plan.success?.metrics?.[k]||false} onChange={v=>setPlan(p=>({...p,success:{...p.success,metrics:{...p.success.metrics,[k]:v}}}))}/>
-                      ))}
-                    </div>
+                      {[["time","Time saved"],["quality","Quality"],["adoption","Adoption"],["revenue","Revenue"],["risk","Risk"]].map(function(kl){return <Check key={kl[0]} label={kl[1]} checked={plan.success.metrics[kl[0]]||false} onChange={function(v){setPlan(function(p){return Object.assign({},p,{success:Object.assign({},p.success,{metrics:Object.assign({},p.success.metrics,{[kl[0]]:v})})});}}}/>;})}</div>
                   </div>
                   <div>
                     <label style={{fontSize:11,fontWeight:700,color:C.greigeDark,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:8}}>Baseline / Starting point</label>
-                    <Field multi value={plan.success?.baseline||""} onChange={v=>setPlan(p=>({...p,success:{...p.success,baseline:v}}))} style={{minHeight:64}}/>
+                    <Field multi value={plan.success.baseline||""} onChange={function(v){setPlan(function(p){return Object.assign({},p,{success:Object.assign({},p.success,{baseline:v})});});}} style={{minHeight:64}}/>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Action Plan */}
             <div style={{background:C.white,borderRadius:8,overflow:"hidden",boxShadow:"0 1px 8px rgba(44,36,32,0.07)",marginBottom:24}}>
               <SecHead title="Action Plan · 30 / 90 / 180 Days" color={C.dark}/>
               <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)"}}>
-                {[["days30","30 Days — Quick wins & foundation",C.blush],["days90","90 Days — First use cases live",C.greige],["days180","180 Days — Scale & learn",C.dark]].map(([ph,label,col])=>(
-                  <div key={ph} style={{borderRight:`1px solid ${C.midGrey}`}}>
-                    <div style={{background:col,color:col===C.dark?C.white:C.dark,padding:"10px 16px",fontSize:12,fontWeight:700}}>{label}</div>
+                {[["days30","30 Days — Quick wins",C.blush],["days90","90 Days — First use cases live",C.greige],["days180","180 Days — Scale & learn",C.dark]].map(function(pl){return(
+                  <div key={pl[0]} style={{borderRight:"1px solid "+C.midGrey}}>
+                    <div style={{background:pl[2],color:pl[2]===C.dark?C.white:C.dark,padding:"10px 16px",fontSize:12,fontWeight:700}}>{pl[1]}</div>
                     <div style={{padding:"14px 16px"}}>
-                      {(plan.actions[ph]||[]).map((a,idx)=>(
-                        <div key={idx} style={{marginBottom:16,paddingBottom:16,borderBottom:idx<2?`1px solid ${C.lightGrey}`:"none"}}>
+                      {(plan.actions[pl[0]]||[]).map(function(a,idx){return(
+                        <div key={idx} style={{marginBottom:16,paddingBottom:16,borderBottom:idx<2?"1px solid "+C.lightGrey:"none"}}>
                           <div style={{fontSize:11,fontWeight:700,color:C.greigeDark,marginBottom:6}}>{idx+1}.</div>
-                          <Field multi value={a.action} onChange={v=>updAct(ph,idx,"action",v)} placeholder="Describe the implementation step..." style={{minHeight:72,fontSize:12}}/>
+                          <Field multi value={a.action} onChange={function(v){updAct(pl[0],idx,"action",v);}} placeholder="Describe the implementation step..." style={{minHeight:72,fontSize:12}}/>
                           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:6}}>
-                            <Field value={a.owner} onChange={v=>updAct(ph,idx,"owner",v)} placeholder="Owner" style={{fontSize:12}}/>
-                            <Field value={a.deadline} onChange={v=>updAct(ph,idx,"deadline",v)} placeholder={`DD.MM.${YEAR}`} style={{fontSize:12}}/>
+                            <Field value={a.owner} onChange={function(v){updAct(pl[0],idx,"owner",v);}} placeholder="Owner" style={{fontSize:12}}/>
+                            <Field value={a.deadline} onChange={function(v){updAct(pl[0],idx,"deadline",v);}} placeholder={"DD.MM."+YEAR} style={{fontSize:12}}/>
                           </div>
                         </div>
-                      ))}
+                      );})}
                     </div>
                   </div>
-                ))}
+                );})}
               </div>
             </div>
 
-            {/* Footer */}
-            <div style={{textAlign:"center",padding:"16px 0",borderTop:`1px solid ${C.midGrey}`,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            <div style={{textAlign:"center",padding:"16px 0",borderTop:"1px solid "+C.midGrey,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
               <div style={{width:22,height:22,background:C.dark,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center"}}>
                 <span style={{color:C.white,fontSize:10,fontWeight:800}}>A</span>
               </div>
               <span style={{fontSize:12,color:C.greigeDark,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>AILY · aily.dk</span>
             </div>
-          </>}
+          </div>}
 
           {activeTab==="background"&&(
             <div style={{background:C.white,borderRadius:8,padding:36,boxShadow:"0 1px 8px rgba(44,36,32,0.07)"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24,borderBottom:`2px solid ${C.blush}`,paddingBottom:20}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24,borderBottom:"2px solid "+C.blush,paddingBottom:20}}>
                 <div>
                   <h2 style={{fontSize:20,fontWeight:800,color:C.dark,margin:0}}>Background Intelligence Paper</h2>
-                  <p style={{fontSize:13,color:C.greigeDark,margin:"6px 0 0"}}>Market research and strategic context supporting your AI Execution Plan</p>
+                  <p style={{fontSize:13,color:C.greigeDark,margin:"6px 0 0"}}>Market research and strategic context for your AI Execution Plan</p>
                   {company&&<p style={{fontSize:12,color:C.greige,margin:"4px 0 0",fontWeight:600}}>{company} · {TODAY}</p>}
                 </div>
-                <button className="no-print" onClick={()=>window.print()} style={{background:C.dark,color:C.white,border:"none",borderRadius:5,padding:"9px 18px",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>🖨 Print</button>
+                <button className="no-print" onClick={function(){window.print();}} style={{background:C.dark,color:C.white,border:"none",borderRadius:5,padding:"9px 18px",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>🖨 Print</button>
               </div>
               <div style={{fontSize:14,lineHeight:1.9,color:C.dark}} dangerouslySetInnerHTML={{__html:mdToHtml(bg)}}/>
-              <div style={{marginTop:36,borderTop:`1px solid ${C.midGrey}`,paddingTop:20,display:"flex",alignItems:"center",gap:8}}>
+              <div style={{marginTop:36,borderTop:"1px solid "+C.midGrey,paddingTop:20,display:"flex",alignItems:"center",gap:8}}>
                 <div style={{width:22,height:22,background:C.dark,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center"}}>
                   <span style={{color:C.white,fontSize:10,fontWeight:800}}>A</span>
                 </div>
@@ -755,7 +572,6 @@ JSON STRUCTURE:
       </div>
     );
   }
-
   return null;
 }
 
